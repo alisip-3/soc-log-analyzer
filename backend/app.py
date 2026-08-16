@@ -3,10 +3,20 @@ from flask_cors import CORS
 import csv
 import io
 import re
+import os
 from collections import Counter
+import google.generativeai as genai
 
 app = Flask(__name__)
-CORS(app)  # This allows GitHub Pages to talk to Render
+CORS(app)
+
+# Configure Gemini AI
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+    model = genai.GenerativeModel("gemini-1.5-flash")
+else:
+    model = None
 
 
 @app.route('/', methods=['GET'])
@@ -14,9 +24,11 @@ def home():
     return jsonify({"status": "SOC Log Analyzer API is running!"})
 
 
+# ============================================
+# ENDPOINT 1: Analyze uploaded file
+# ============================================
 @app.route('/analyze', methods=['POST'])
 def analyze_file():
-    # Check if a file was uploaded
     if 'file' not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
 
@@ -27,7 +39,6 @@ def analyze_file():
     filename = file.filename.lower()
 
     try:
-        # Read the file content
         content = file.read().decode('utf-8', errors='ignore')
         lines = content.strip().split('\n')
 
@@ -38,7 +49,6 @@ def analyze_file():
             "summary": {}
         }
 
-        # Detect file type and analyze
         if filename.endswith('.csv'):
             results = analyze_csv(content, results)
         elif filename.endswith('.log') or filename.endswith('.txt'):
@@ -47,7 +57,7 @@ def analyze_file():
             results["findings"].append({
                 "severity": "INFO",
                 "title": "Unknown file type",
-                "description": f"File type '{filename.split('.')[-1]}' is not fully supported yet. Showing basic stats.",
+                "description": f"File type not fully supported. Showing basic stats.",
                 "mitre": ""
             })
             results["summary"] = {"total_lines": len(lines)}
@@ -58,8 +68,93 @@ def analyze_file():
         return jsonify({"error": str(e)}), 500
 
 
+# ============================================
+# ENDPOINT 2: Generate AI Report
+# ============================================
+@app.route('/generate-report', methods=['POST'])
+def generate_report():
+    if not model:
+        return jsonify({"error": "Gemini API key not configured"}), 500
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    findings_text = data.get("findings", "")
+    incident_name = data.get("incident_name", "Security Incident")
+    severity = data.get("severity", "Medium")
+    additional_notes = data.get("additional_notes", "")
+
+    prompt = f"""You are a senior SOC analyst writing a professional Incident Response report.
+
+Incident Name: {incident_name}
+Severity: {severity}
+
+INVESTIGATION FINDINGS:
+{findings_text}
+
+ADDITIONAL ANALYST NOTES:
+{additional_notes}
+
+Write a complete, professional Incident Response report with EXACTLY these sections:
+
+# Incident Response Report: {incident_name}
+
+## 1. Header & Metadata
+- Incident ID: IR-{incident_name.replace(' ', '-')}-001
+- Severity: {severity}
+- Status: Under Investigation
+- Analyst: SOC Team
+
+## 2. Executive Summary
+[High-level overview for management. What happened, business impact, current status.]
+
+## 3. MITRE ATT&CK Kill Chain Mapping
+Map each finding to the appropriate MITRE ATT&CK tactic and technique. Use a table:
+
+| Kill Chain Phase | MITRE Technique | Evidence |
+|---|---|---|
+| Initial Access | [ID - Name] | [What we found] |
+| Execution | [ID - Name] | [What we found] |
+| [etc...] | [etc...] | [etc...] |
+
+Only include phases where you have evidence. If no evidence, write "Not observed."
+
+## 4. Incident Timeline
+[Chronological sequence of events based on the findings.]
+
+## 5. Technical Analysis
+[Detailed technical breakdown: entry vector, adversary actions, IOCs (IPs, domains, hashes, accounts).]
+
+## 6. Forensic Evidence & Log Artifacts
+[List all evidence, commands used, and what they revealed.]
+
+## 7. Containment, Eradication & Recovery
+[Recommended actions: isolation, removal, verification, restoration.]
+
+## 8. Post-Incident Recommendations
+[Immediate fixes, long-term improvements, lessons learned.]
+
+RULES:
+- Be specific. Reference actual data from the findings.
+- Do NOT invent information not in the findings.
+- Use real MITRE ATT&CK technique IDs (e.g., T1566, T1078, T1021).
+- Keep it professional and concise.
+- Write in markdown format.
+"""
+
+    try:
+        response = model.generate_content(prompt)
+        report_text = response.text
+        return jsonify({"report": report_text})
+    except Exception as e:
+        return jsonify({"error": f"AI generation failed: {str(e)}"}), 500
+
+
+# ============================================
+# Helper: Analyze CSV files
+# ============================================
 def analyze_csv(content, results):
-    """Analyze CSV files (like Splunk exports)"""
     reader = csv.DictReader(io.StringIO(content))
     rows = list(reader)
 
@@ -78,19 +173,17 @@ def analyze_csv(content, results):
     # Find IP columns
     ip_columns = [col for col in rows[0].keys() if 'ip' in col.lower() or 'src' in col.lower() or 'dst' in col.lower()]
 
-    # Count source IPs
     for col in ip_columns:
         ip_counts = Counter(row.get(col, '') for row in rows if row.get(col, ''))
         if ip_counts:
             top_ip, top_count = ip_counts.most_common(1)[0]
             results["summary"][f"top_{col}"] = {"ip": top_ip, "count": top_count}
 
-            # Flag if one IP appears too many times
             if top_count > len(rows) * 0.5:
                 results["findings"].append({
                     "severity": "HIGH",
                     "title": f"Dominant IP in {col}",
-                    "description": f"IP {top_ip} appears {top_count} times out of {len(rows)} events ({round(top_count/len(rows)*100)}%). This could indicate a focused attack.",
+                    "description": f"IP {top_ip} appears {top_count} times out of {len(rows)} events ({round(top_count/len(rows)*100)}%).",
                     "mitre": "T1595 - Active Scanning"
                 })
 
@@ -100,7 +193,7 @@ def analyze_csv(content, results):
         results["findings"].append({
             "severity": "HIGH",
             "title": "Multiple Failed Logins Detected",
-            "description": f"Found {failed_count} failed login events. This could indicate a brute force attack.",
+            "description": f"Found {failed_count} failed login events. Possible brute force attack.",
             "mitre": "T1110 - Brute Force"
         })
 
@@ -113,7 +206,7 @@ def analyze_csv(content, results):
             results["findings"].append({
                 "severity": "MEDIUM",
                 "title": "Suspicious Port Usage",
-                "description": f"Connections on unusual ports detected: {', '.join(suspicious_ports)}. These ports are commonly used by malware.",
+                "description": f"Connections on unusual ports: {', '.join(suspicious_ports)}.",
                 "mitre": "T1571 - Non-Standard Port"
             })
 
@@ -121,19 +214,20 @@ def analyze_csv(content, results):
         results["findings"].append({
             "severity": "LOW",
             "title": "No Immediate Threats Detected",
-            "description": "Basic analysis did not find obvious suspicious patterns. Manual review recommended.",
+            "description": "Basic analysis did not find obvious suspicious patterns.",
             "mitre": ""
         })
 
     return results
 
 
+# ============================================
+# Helper: Analyze log files
+# ============================================
 def analyze_log(content, results):
-    """Analyze plain text log files"""
     lines = content.strip().split('\n')
     results["summary"]["total_lines"] = len(lines)
 
-    # Find IP addresses
     ip_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b'
     all_ips = re.findall(ip_pattern, content)
     if all_ips:
@@ -141,26 +235,23 @@ def analyze_log(content, results):
         top_ips = ip_counts.most_common(5)
         results["summary"]["top_ips"] = [{"ip": ip, "count": count} for ip, count in top_ips]
 
-        # Flag dominant IP
         if top_ips and top_ips[0][1] > len(lines) * 0.3:
             results["findings"].append({
                 "severity": "HIGH",
                 "title": "Dominant IP Address",
-                "description": f"IP {top_ips[0][0]} appears {top_ips[0][1]} times. This IP should be investigated.",
+                "description": f"IP {top_ips[0][0]} appears {top_ips[0][1]} times.",
                 "mitre": "T1595 - Active Scanning"
             })
 
-    # Check for failed logins
     failed_lines = [l for l in lines if 'fail' in l.lower() or 'invalid' in l.lower()]
     if len(failed_lines) > 10:
         results["findings"].append({
             "severity": "HIGH",
             "title": "Multiple Failed Logins",
-            "description": f"Found {len(failed_lines)} lines indicating failed logins. Possible brute force attack.",
+            "description": f"Found {len(failed_lines)} failed login events.",
             "mitre": "T1110 - Brute Force"
         })
 
-    # Check for suspicious keywords
     suspicious_keywords = ['malware', 'exploit', 'injection', 'backdoor', 'trojan', 'ransomware']
     for keyword in suspicious_keywords:
         matches = [l for l in lines if keyword in l.lower()]
