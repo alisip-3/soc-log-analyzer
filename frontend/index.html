@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOC Log Analyzer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <h1>🛡️ SOC Log Analyzer</h1>
+            <p>Upload your logs. Get instant analysis. Generate AI reports.</p>
+        </div>
+    </header>
+
+    <!-- Upload Section -->
+    <section class="upload-section">
+        <div class="upload-box" id="dropZone">
+            <div class="upload-icon">📁</div>
+            <h3>Upload Your Log File</h3>
+            <p>Drag & drop or click to browse</p>
+            <p class="supported">Supports: CSV, LOG, TXT (Splunk exports, Suricata, Zeek, Apache)</p>
+            <input type="file" id="fileInput" accept=".csv,.log,.txt,.json,.tsv" hidden>
+            <button class="btn btn-primary" id="browseBtn">Choose File</button>
+        </div>
+
+        <div class="file-info" id="fileInfo" style="display: none;">
+            <span id="fileName"></span>
+            <button class="btn btn-analyze" id="analyzeBtn">🔍 Analyze</button>
+        </div>
+
+        <div class="loading" id="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Analyzing your file...</p>
+        </div>
+    </section>
+
+    <!-- Results Section -->
+    <section class="results-section" id="resultsSection" style="display: none;">
+
+        <!-- Summary Cards -->
+        <div class="summary-cards" id="summaryCards"></div>
+
+        <!-- Findings -->
+        <h2 class="section-title">🚨 Findings</h2>
+        <div class="findings-list" id="findingsList"></div>
+
+        <!-- Generate Report Button -->
+        <div class="report-section">
+            <button class="btn btn-report" id="reportBtn">📄 Generate AI Report</button>
+        </div>
+
+        <!-- Report Output -->
+        <div class="report-output" id="reportOutput" style="display: none;">
+            <h2 class="section-title">📋 Generated Report</h2>
+            <div class="report-content" id="reportContent"></div>
+            <button class="btn btn-copy" id="copyBtn">📋 Copy Report</button>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>Built by a Junior SOC Analyst | Powered by Python + AI</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
