@@ -6,16 +6,14 @@
     <title>SOC Analyzer | AI-Powered IR Reports</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 
-    <!-- Animated Background -->
     <div class="bg-grid"></div>
     <div class="bg-glow glow-1"></div>
     <div class="bg-glow glow-2"></div>
 
-    <!-- Navbar -->
     <nav class="navbar">
         <div class="logo">
             <span class="logo-icon">🛡️</span>
@@ -24,11 +22,10 @@
         <div class="nav-badge">AI-POWERED IR PLATFORM</div>
     </nav>
 
-    <!-- Hero -->
     <header class="hero">
         <div class="hero-badge">⚡ AUTOMATED THREAT ANALYSIS</div>
         <h1>Turn Raw Logs Into<br><span class="gradient-text">Professional IR Reports</span></h1>
-        <p>Upload your logs or write your findings. The AI engine analyzes the data and generates a complete incident response report with MITRE ATT&CK mapping.</p>
+        <p>Upload your logs or write your findings. The AI engine generates a complete incident response report with MITRE ATT&CK mapping and evidence screenshots.</p>
     </header>
 
     <!-- Mode Selection -->
@@ -38,13 +35,13 @@
             <div class="mode-card">
                 <div class="mode-icon">📁</div>
                 <h3>Upload & Analyze</h3>
-                <p>Upload a log file, get automatic analysis, review the findings, then generate a full report.</p>
+                <p>Upload a log file, get automatic analysis, review findings, add screenshots, then generate a full report.</p>
                 <button class="btn btn-cyan" onclick="selectMode('upload')">Start Analysis →</button>
             </div>
             <div class="mode-card">
                 <div class="mode-icon">✍️</div>
-                <h3>Write Findings</h3>
-                <p>Already investigated? Type or paste your findings and generate a full professional report.</p>
+                <h3>Write / Upload Findings</h3>
+                <p>Already investigated? Type your findings or upload a notes file, add screenshots, and generate a report.</p>
                 <button class="btn btn-purple" onclick="selectMode('write')">Write Report →</button>
             </div>
         </div>
@@ -75,7 +72,6 @@
             </div>
         </div>
 
-        <!-- Analysis Results -->
         <div id="analysisResults" style="display: none;">
             <h3 class="section-label">🚨 ANALYSIS FINDINGS</h3>
             <div class="summary-cards" id="summaryCards"></div>
@@ -86,8 +82,15 @@
                 <textarea id="additionalNotes" placeholder="Add any additional context, findings, or corrections here..."></textarea>
             </div>
 
+            <div class="glass-panel">
+                <h3 class="section-label">📸 ADD EVIDENCE SCREENSHOTS (OPTIONAL)</h3>
+                <input type="file" id="shots1" accept="image/*" multiple hidden>
+                <button class="btn btn-cyan" id="shotsBtn1">📸 Add Screenshots</button>
+                <div class="shots-preview" id="shotsPreview1"></div>
+            </div>
+
             <div class="report-input">
-                <input type="text" id="incidentName1" placeholder="Incident Name (e.g., Ransomware Attack on HR Dept)">
+                <input type="text" id="incidentName1" placeholder="Incident Name (e.g., Ransomware Attack)">
                 <select id="severity1">
                     <option value="Critical">Critical</option>
                     <option value="High" selected>High</option>
@@ -99,10 +102,10 @@
         </div>
     </section>
 
-    <!-- MODE 2: Write Findings -->
+    <!-- MODE 2: Write / Upload Findings -->
     <section class="content-section" id="writeSection" style="display: none;">
         <button class="btn btn-ghost" onclick="goBack()">← Back</button>
-        <h2 class="section-label">✍️ WRITE YOUR FINDINGS</h2>
+        <h2 class="section-label">✍️ WRITE OR UPLOAD YOUR FINDINGS</h2>
 
         <div class="glass-panel">
             <div class="form-row">
@@ -115,15 +118,28 @@
                 </select>
             </div>
 
+            <div class="notes-upload">
+                <input type="file" id="notesFileInput" accept=".txt,.md,.log,.csv" hidden>
+                <button class="btn btn-cyan" id="notesUploadBtn">📂 Upload Notes File</button>
+                <span class="or-text">— OR TYPE BELOW —</span>
+            </div>
+            <p class="upload-hint">Upload your Notepad / notes file (.txt, .md, .log, .csv), or type your findings below.</p>
+
             <textarea id="findingsText" placeholder="Type or paste your investigation findings here...
 
 Example:
 - Found attacker IP 203.0.113.50 sending phishing emails to 3 users
 - User j.smith clicked the malicious link and downloaded malware.exe
-- Malware established C2 connection to evil-domain.com on port 443
 - Blocked the IP at the firewall and isolated PC-042"></textarea>
 
-            <button class="btn btn-purple" id="generateReportBtn2">📄 Generate Full Report</button>
+            <h3 class="section-label">📸 ADD EVIDENCE SCREENSHOTS (OPTIONAL)</h3>
+            <input type="file" id="shots2" accept="image/*" multiple hidden>
+            <button class="btn btn-cyan" id="shotsBtn2">📸 Add Screenshots</button>
+            <div class="shots-preview" id="shotsPreview2"></div>
+
+            <div style="margin-top:20px;">
+                <button class="btn btn-purple" id="generateReportBtn2">📄 Generate Full Report</button>
+            </div>
         </div>
     </section>
 
@@ -137,13 +153,18 @@ Example:
     <section class="content-section" id="reportSection" style="display: none;">
         <h2 class="section-label">📋 GENERATED REPORT</h2>
         <div class="report-content" id="reportContent"></div>
+
+        <div id="screenshotGallery" style="display: none;">
+            <h2 class="section-label">📸 EVIDENCE SCREENSHOTS</h2>
+            <div class="gallery" id="galleryGrid"></div>
+        </div>
+
         <div class="report-actions">
             <button class="btn btn-cyan" id="copyBtn">📋 Copy Report</button>
             <button class="btn btn-ghost" onclick="goBack()">🔄 Start New Report</button>
         </div>
     </section>
 
-    <!-- Footer -->
     <footer class="footer">
         <p>Built by <span class="footer-name">Alisi Pinhasov</span> | Powered by Python + Google Gemini AI</p>
     </footer>
