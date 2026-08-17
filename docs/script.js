@@ -298,26 +298,56 @@ document.getElementById('copyBtn').addEventListener('click', () => {
 });
 
 // ============================================
-// Download Report as a file
+// Download Report (ZIP with screenshots, or .md if none)
 // ============================================
-document.getElementById('downloadBtn').addEventListener('click', () => {
+document.getElementById('downloadBtn').addEventListener('click', async () => {
     const text = document.getElementById('reportContent').textContent;
+    const date = new Date().toISOString().slice(0, 10);
 
-    // Create a file from the report text
-    const blob = new Blob([text], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
+    if (activeShots && activeShots.length > 0) {
+        // --- WITH SCREENSHOTS: build a ZIP ---
+        const zip = new JSZip();
+        zip.file("IR_Report.md", text);
 
-    // Build a temporary link and click it
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'IR_Report_' + new Date().toISOString().slice(0, 10) + '.md';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+        activeShots.forEach((shot, i) => {
+            // dataUrl looks like: data:image/png;base64,XXXX
+            const matches = shot.dataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+            if (matches) {
+                const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+                zip.file(`screenshot_${i + 1}.${ext}`, matches[2], { base64: true });
+            }
+        });
 
-    // Feedback
+        // Small readme listing the captions
+        let readme = "# Evidence Screenshots\n\n";
+        activeShots.forEach((s, i) => {
+            readme += `- Screenshot #${i + 1}: ${s.caption || '(no caption)'}\n`;
+        });
+        zip.file("screenshots_readme.md", readme);
+
+        const blob = await zip.generateAsync({ type: "blob" });
+        triggerDownload(blob, `IR_Report_${date}.zip`);
+
+    } else {
+        // --- NO SCREENSHOTS: just the markdown file ---
+        const blob = new Blob([text], { type: 'text/markdown' });
+        triggerDownload(blob, `IR_Report_${date}.md`);
+    }
+
     const btn = document.getElementById('downloadBtn');
     btn.textContent = '✅ Saved!';
     setTimeout(() => { btn.textContent = '📥 Download Report'; }, 2000);
 });
+
+function triggerDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+    
