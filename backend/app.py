@@ -84,6 +84,14 @@ def generate_report():
     incident_name = data.get("incident_name", "Security Incident")
     severity = data.get("severity", "Medium")
     additional_notes = data.get("additional_notes", "")
+    screenshots_text = data.get("screenshots", "")
+
+    screenshots_block = ""
+    if screenshots_text:
+        screenshots_block = f"""
+EVIDENCE SCREENSHOTS PROVIDED BY THE ANALYST:
+{screenshots_text}
+"""
 
     prompt = f"""You are a senior SOC analyst writing a professional Incident Response report.
 
@@ -95,13 +103,14 @@ INVESTIGATION FINDINGS:
 
 ADDITIONAL ANALYST NOTES:
 {additional_notes}
+{screenshots_block}
 
 Write a complete, professional Incident Response report with EXACTLY these sections:
 
 # Incident Response Report: {incident_name}
 
 ## 1. Header & Metadata
-- Incident ID: IR-{incident_name.replace(' ', '-')}-001
+- Incident ID: IR-001
 - Severity: {severity}
 - Status: Under Investigation
 - Analyst: SOC Team
@@ -110,24 +119,19 @@ Write a complete, professional Incident Response report with EXACTLY these secti
 [High-level overview for management. What happened, business impact, current status.]
 
 ## 3. MITRE ATT&CK Kill Chain Mapping
-Map each finding to the appropriate MITRE ATT&CK tactic and technique. Use a table:
-
 | Kill Chain Phase | MITRE Technique | Evidence |
 |---|---|---|
 | Initial Access | [ID - Name] | [What we found] |
-| Execution | [ID - Name] | [What we found] |
-| [etc...] | [etc...] | [etc...] |
-
-Only include phases where you have evidence. If no evidence, write "Not observed."
+[Only include phases with evidence. Otherwise write "Not observed."]
 
 ## 4. Incident Timeline
 [Chronological sequence of events based on the findings.]
 
 ## 5. Technical Analysis
-[Detailed technical breakdown: entry vector, adversary actions, IOCs (IPs, domains, hashes, accounts).]
+[Detailed breakdown: entry vector, adversary actions, IOCs (IPs, domains, hashes, accounts).]
 
-## 6. Forensic Evidence & Log Artifacts
-[List all evidence, commands used, and what they revealed.]
+## 6. Forensic Evidence & Screenshots
+[List all evidence and what it revealed. Reference the provided screenshots by number, e.g. "(see Screenshot #1)". If screenshots were listed, mention each one and what it supports.]
 
 ## 7. Containment, Eradication & Recovery
 [Recommended actions: isolation, removal, verification, restoration.]
@@ -139,17 +143,15 @@ RULES:
 - Be specific. Reference actual data from the findings.
 - Do NOT invent information not in the findings.
 - Use real MITRE ATT&CK technique IDs (e.g., T1566, T1078, T1021).
-- Keep it professional and concise.
 - Write in markdown format.
 """
 
     try:
         response = model.generate_content(prompt)
-        report_text = response.text
-        return jsonify({"report": report_text})
+        return jsonify({"report": response.text})
     except Exception as e:
         return jsonify({"error": f"AI generation failed: {str(e)}"}), 500
-
+        
 
 # ============================================
 # Helper: Analyze CSV files
