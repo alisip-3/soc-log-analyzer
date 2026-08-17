@@ -10,19 +10,38 @@
 
     <!-- Header -->
     <header class="header">
-        <div class="header-content">
-            <h1>🛡️ SOC Log Analyzer</h1>
-            <p>Upload your logs. Get instant analysis. Generate AI reports.</p>
-        </div>
+        <h1>🛡️ SOC Log Analyzer</h1>
+        <p>Upload your logs or write your findings. Get a professional AI-powered IR report.</p>
     </header>
 
-    <!-- Upload Section -->
-    <section class="upload-section">
+    <!-- Mode Selection -->
+    <section class="mode-selection" id="modeSelection">
+        <h2>How would you like to start?</h2>
+        <div class="mode-cards">
+            <div class="mode-card" id="uploadModeCard">
+                <div class="mode-icon">📁</div>
+                <h3>Upload & Analyze</h3>
+                <p>Upload a log file, get automatic analysis, review findings, then generate a full report.</p>
+                <button class="btn btn-select" onclick="selectMode('upload')">Select</button>
+            </div>
+            <div class="mode-card" id="writeModeCard">
+                <div class="mode-icon">✍️</div>
+                <h3>Write Findings</h3>
+                <p>Already investigated? Type or paste your findings and generate a full professional report.</p>
+                <button class="btn btn-select" onclick="selectMode('write')">Select</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- MODE 1: Upload & Analyze -->
+    <section class="content-section" id="uploadSection" style="display: none;">
+        <button class="btn btn-back" onclick="goBack()">← Back</button>
+        <h2>📁 Upload & Analyze</h2>
+
         <div class="upload-box" id="dropZone">
-            <div class="upload-icon">📁</div>
-            <h3>Upload Your Log File</h3>
-            <p>Drag & drop or click to browse</p>
-            <p class="supported">Supports: CSV, LOG, TXT (Splunk exports, Suricata, Zeek, Apache)</p>
+            <div class="upload-icon">📂</div>
+            <h3>Drop your log file here</h3>
+            <p>Supports: CSV, LOG, TXT</p>
             <input type="file" id="fileInput" accept=".csv,.log,.txt,.json,.tsv" hidden>
             <button class="btn btn-primary" id="browseBtn">Choose File</button>
         </div>
@@ -36,34 +55,79 @@
             <div class="spinner"></div>
             <p>Analyzing your file...</p>
         </div>
+
+        <!-- Analysis Results -->
+        <div id="analysisResults" style="display: none;">
+            <h3 class="section-title">🚨 Analysis Findings</h3>
+            <div class="summary-cards" id="summaryCards"></div>
+            <div class="findings-list" id="findingsList"></div>
+
+            <div class="notes-section">
+                <h3 class="section-title">📝 Add Your Own Notes (Optional)</h3>
+                <textarea id="additionalNotes" placeholder="Add any additional context, findings, or corrections here..."></textarea>
+            </div>
+
+            <div class="report-input">
+                <input type="text" id="incidentName1" placeholder="Incident Name (e.g., Ransomware Attack on HR Dept)">
+                <select id="severity1">
+                    <option value="Critical">Critical</option>
+                    <option value="High" selected>High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                </select>
+                <button class="btn btn-report" id="generateReportBtn1">📄 Generate Full Report</button>
+            </div>
+        </div>
     </section>
 
-    <!-- Results Section -->
-    <section class="results-section" id="resultsSection" style="display: none;">
+    <!-- MODE 2: Write Findings -->
+    <section class="content-section" id="writeSection" style="display: none;">
+        <button class="btn btn-back" onclick="goBack()">← Back</button>
+        <h2>✍️ Write Your Findings</h2>
 
-        <!-- Summary Cards -->
-        <div class="summary-cards" id="summaryCards"></div>
+        <div class="write-form">
+            <div class="form-row">
+                <input type="text" id="incidentName2" placeholder="Incident Name (e.g., Phishing Campaign)">
+                <select id="severity2">
+                    <option value="Critical">Critical</option>
+                    <option value="High" selected>High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                </select>
+            </div>
 
-        <!-- Findings -->
-        <h2 class="section-title">🚨 Findings</h2>
-        <div class="findings-list" id="findingsList"></div>
+            <textarea id="findingsText" placeholder="Type or paste your investigation findings here...
 
-        <!-- Generate Report Button -->
-        <div class="report-section">
-            <button class="btn btn-report" id="reportBtn">📄 Generate AI Report</button>
+Example:
+- Found attacker IP 203.0.113.50 sending phishing emails to 3 users
+- User j.smith clicked the malicious link and downloaded malware.exe
+- Malware established C2 connection to evil-domain.com on port 443
+- Blocked the IP at the firewall and isolated PC-042
+- Reset credentials for affected users"></textarea>
+
+            <button class="btn btn-report" id="generateReportBtn2">📄 Generate Full Report</button>
         </div>
+    </section>
 
-        <!-- Report Output -->
-        <div class="report-output" id="reportOutput" style="display: none;">
-            <h2 class="section-title">📋 Generated Report</h2>
-            <div class="report-content" id="reportContent"></div>
+    <!-- Report Loading -->
+    <div class="loading" id="reportLoading" style="display: none;">
+        <div class="spinner"></div>
+        <p>AI is writing your professional report... This may take 15-30 seconds.</p>
+    </div>
+
+    <!-- Report Output -->
+    <section class="content-section" id="reportSection" style="display: none;">
+        <h2 class="section-title">📋 Generated Report</h2>
+        <div class="report-content" id="reportContent"></div>
+        <div class="report-actions">
             <button class="btn btn-copy" id="copyBtn">📋 Copy Report</button>
+            <button class="btn btn-primary" onclick="goBack()">🔄 Start New Report</button>
         </div>
     </section>
 
     <!-- Footer -->
     <footer class="footer">
-        <p>Built by Alisi Pinhasov | Powered by Python + AI</p>
+        <p>Built by a Junior SOC Analyst | Powered by Python + Google Gemini AI</p>
     </footer>
 
     <script src="script.js"></script>
