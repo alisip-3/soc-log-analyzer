@@ -3,67 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SOC Log Analyzer</title>
+    <title>SOC Analyzer | AI-Powered IR Reports</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- Header -->
-    <header class="header">
-        <h1>🛡️ SOC Log Analyzer</h1>
-        <p>Upload your logs or write your findings. Get a professional AI-powered IR report.</p>
+    <!-- Animated Background -->
+    <div class="bg-grid"></div>
+    <div class="bg-glow glow-1"></div>
+    <div class="bg-glow glow-2"></div>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="logo">
+            <span class="logo-icon">🛡️</span>
+            <span class="logo-text">SOC<span class="accent">ANALYZER</span></span>
+        </div>
+        <div class="nav-badge">AI-POWERED IR PLATFORM</div>
+    </nav>
+
+    <!-- Hero -->
+    <header class="hero">
+        <div class="hero-badge">⚡ AUTOMATED THREAT ANALYSIS</div>
+        <h1>Turn Raw Logs Into<br><span class="gradient-text">Professional IR Reports</span></h1>
+        <p>Upload your logs or write your findings. The AI engine analyzes the data and generates a complete incident response report with MITRE ATT&CK mapping.</p>
     </header>
 
     <!-- Mode Selection -->
     <section class="mode-selection" id="modeSelection">
-        <h2>How would you like to start?</h2>
+        <h2 class="section-label">CHOOSE YOUR WORKFLOW</h2>
         <div class="mode-cards">
-            <div class="mode-card" id="uploadModeCard">
+            <div class="mode-card">
                 <div class="mode-icon">📁</div>
                 <h3>Upload & Analyze</h3>
-                <p>Upload a log file, get automatic analysis, review findings, then generate a full report.</p>
-                <button class="btn btn-select" onclick="selectMode('upload')">Select</button>
+                <p>Upload a log file, get automatic analysis, review the findings, then generate a full report.</p>
+                <button class="btn btn-cyan" onclick="selectMode('upload')">Start Analysis →</button>
             </div>
-            <div class="mode-card" id="writeModeCard">
+            <div class="mode-card">
                 <div class="mode-icon">✍️</div>
                 <h3>Write Findings</h3>
                 <p>Already investigated? Type or paste your findings and generate a full professional report.</p>
-                <button class="btn btn-select" onclick="selectMode('write')">Select</button>
+                <button class="btn btn-purple" onclick="selectMode('write')">Write Report →</button>
             </div>
         </div>
     </section>
 
     <!-- MODE 1: Upload & Analyze -->
     <section class="content-section" id="uploadSection" style="display: none;">
-        <button class="btn btn-back" onclick="goBack()">← Back</button>
-        <h2>📁 Upload & Analyze</h2>
+        <button class="btn btn-ghost" onclick="goBack()">← Back</button>
+        <h2 class="section-label">📁 UPLOAD & ANALYZE</h2>
 
-        <div class="upload-box" id="dropZone">
-            <div class="upload-icon">📂</div>
-            <h3>Drop your log file here</h3>
-            <p>Supports: CSV, LOG, TXT</p>
-            <input type="file" id="fileInput" accept=".csv,.log,.txt,.json,.tsv" hidden>
-            <button class="btn btn-primary" id="browseBtn">Choose File</button>
-        </div>
+        <div class="glass-panel">
+            <div class="upload-box" id="dropZone">
+                <div class="upload-icon">📂</div>
+                <h3>Drop your log file here</h3>
+                <p>Supports: CSV, LOG, TXT, JSON, TSV</p>
+                <input type="file" id="fileInput" accept=".csv,.log,.txt,.json,.tsv" hidden>
+                <button class="btn btn-cyan" id="browseBtn">Choose File</button>
+            </div>
 
-        <div class="file-info" id="fileInfo" style="display: none;">
-            <span id="fileName"></span>
-            <button class="btn btn-analyze" id="analyzeBtn">🔍 Analyze</button>
-        </div>
+            <div class="file-info" id="fileInfo" style="display: none;">
+                <span id="fileName"></span>
+                <button class="btn btn-cyan" id="analyzeBtn">🔍 Analyze</button>
+            </div>
 
-        <div class="loading" id="loading" style="display: none;">
-            <div class="spinner"></div>
-            <p>Analyzing your file...</p>
+            <div class="loading" id="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Analyzing your file...</p>
+            </div>
         </div>
 
         <!-- Analysis Results -->
         <div id="analysisResults" style="display: none;">
-            <h3 class="section-title">🚨 Analysis Findings</h3>
+            <h3 class="section-label">🚨 ANALYSIS FINDINGS</h3>
             <div class="summary-cards" id="summaryCards"></div>
             <div class="findings-list" id="findingsList"></div>
 
-            <div class="notes-section">
-                <h3 class="section-title">📝 Add Your Own Notes (Optional)</h3>
+            <div class="glass-panel">
+                <h3 class="section-label">📝 ADD YOUR OWN NOTES (OPTIONAL)</h3>
                 <textarea id="additionalNotes" placeholder="Add any additional context, findings, or corrections here..."></textarea>
             </div>
 
@@ -75,17 +94,17 @@
                     <option value="Medium">Medium</option>
                     <option value="Low">Low</option>
                 </select>
-                <button class="btn btn-report" id="generateReportBtn1">📄 Generate Full Report</button>
+                <button class="btn btn-purple" id="generateReportBtn1">📄 Generate Full Report</button>
             </div>
         </div>
     </section>
 
     <!-- MODE 2: Write Findings -->
     <section class="content-section" id="writeSection" style="display: none;">
-        <button class="btn btn-back" onclick="goBack()">← Back</button>
-        <h2>✍️ Write Your Findings</h2>
+        <button class="btn btn-ghost" onclick="goBack()">← Back</button>
+        <h2 class="section-label">✍️ WRITE YOUR FINDINGS</h2>
 
-        <div class="write-form">
+        <div class="glass-panel">
             <div class="form-row">
                 <input type="text" id="incidentName2" placeholder="Incident Name (e.g., Phishing Campaign)">
                 <select id="severity2">
@@ -102,32 +121,31 @@ Example:
 - Found attacker IP 203.0.113.50 sending phishing emails to 3 users
 - User j.smith clicked the malicious link and downloaded malware.exe
 - Malware established C2 connection to evil-domain.com on port 443
-- Blocked the IP at the firewall and isolated PC-042
-- Reset credentials for affected users"></textarea>
+- Blocked the IP at the firewall and isolated PC-042"></textarea>
 
-            <button class="btn btn-report" id="generateReportBtn2">📄 Generate Full Report</button>
+            <button class="btn btn-purple" id="generateReportBtn2">📄 Generate Full Report</button>
         </div>
     </section>
 
     <!-- Report Loading -->
     <div class="loading" id="reportLoading" style="display: none;">
         <div class="spinner"></div>
-        <p>AI is writing your professional report... This may take 15-30 seconds.</p>
+        <p>AI is writing your professional report... (15-30 seconds)</p>
     </div>
 
     <!-- Report Output -->
     <section class="content-section" id="reportSection" style="display: none;">
-        <h2 class="section-title">📋 Generated Report</h2>
+        <h2 class="section-label">📋 GENERATED REPORT</h2>
         <div class="report-content" id="reportContent"></div>
         <div class="report-actions">
-            <button class="btn btn-copy" id="copyBtn">📋 Copy Report</button>
-            <button class="btn btn-primary" onclick="goBack()">🔄 Start New Report</button>
+            <button class="btn btn-cyan" id="copyBtn">📋 Copy Report</button>
+            <button class="btn btn-ghost" onclick="goBack()">🔄 Start New Report</button>
         </div>
     </section>
 
     <!-- Footer -->
     <footer class="footer">
-        <p>Built by a Junior SOC Analyst | Powered by Python + Google Gemini AI</p>
+        <p>Built by <span class="footer-name">Alisi Pinhasov</span> | Powered by Python + Google Gemini AI</p>
     </footer>
 
     <script src="script.js"></script>
