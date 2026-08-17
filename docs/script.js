@@ -296,3 +296,28 @@ document.getElementById('copyBtn').addEventListener('click', () => {
         setTimeout(() => { document.getElementById('copyBtn').textContent = '📋 Copy Report'; }, 2000);
     });
 });
+
+// ============================================
+// Download Report as a file
+// ============================================
+document.getElementById('downloadBtn').addEventListener('click', () => {
+    const text = document.getElementById('reportContent').textContent;
+
+    // Create a file from the report text
+    const blob = new Blob([text], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+
+    // Build a temporary link and click it
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'IR_Report_' + new Date().toISOString().slice(0, 10) + '.md';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // Feedback
+    const btn = document.getElementById('downloadBtn');
+    btn.textContent = '✅ Saved!';
+    setTimeout(() => { btn.textContent = '📥 Download Report'; }, 2000);
+});
