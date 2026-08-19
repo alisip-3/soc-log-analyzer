@@ -1,23 +1,28 @@
 from flask import Flask, request, jsonify
-import urllib.request
 from flask_cors import CORS
 import csv
 import io
 import re
 import os
+import json
+import urllib.request
 from collections import Counter
 import google.generativeai as genai
 
 app = Flask(__name__)
 CORS(app)
 
-# Configure Gemini AI
+# ============================================
+# API CONFIGURATION
+# ============================================
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
     model = genai.GenerativeModel("gemini-1.5-flash")
 else:
     model = None
+
+VIRUSTOTAL_API_KEY = os.environ.get("VIRUSTOTAL_API_KEY", "")
 
 
 @app.route('/', methods=['GET'])
@@ -55,12 +60,8 @@ def analyze_file():
         elif filename.endswith('.log') or filename.endswith('.txt'):
             results = analyze_log(content, results)
         else:
-            results["findings"].append({
-                "severity": "INFO",
-                "title": "Unknown file type",
-                "description": f"File type not fully supported. Showing basic stats.",
-                "mitre": ""
-            })
+            add_finding(results, "INFO", "Unknown file type",
+                        "File type not fully supported. Showing basic stats.", "")
             results["summary"] = {"total_lines": len(lines)}
 
         return jsonify(results)
@@ -152,128 +153,304 @@ RULES:
         return jsonify({"report": response.text})
     except Exception as e:
         return jsonify({"error": f"AI generation failed: {str(e)}"}), 500
-        
+
 
 # ============================================
-# Helper: Analyze CSV files
+# ENHANCED ANALYSIS ENGINE
+# ============================================
+
+SUSPICIOUS_PORTS = {
+    '21': 'FTP', '23': 'Telnet', '135': 'RPC', '139': 'NetBIOS', '445': 'SMB',
+    '3389': 'RDP', '5900': 'VNC', '4444': 'Metasploit', '5555': 'Backdoor',
+    '6666': 'IRC backdoor', '8888': 'Alt HTTP', '9999': 'Backdoor', '1337': 'Elite',
+    '31337': 'Back Orifice', '4443': 'Alt HTTPS', '1234': 'Backdoor', '666': 'Backdoor', '9001': 'Tor'
+}
+
+LOTL_PATTERNS = [
+    ('powershell -enc', 'T1059.001 - Encoded PowerShell'),
+    ('-encodedcommand', 'T1059.001 - Encoded PowerShell'),
+    ('-nop -w hidden', 'T1059.001 - Hidden PowerShell'),
+    ('downloadstring', 'T1059.001 - PowerShell DownloadString'),
+    ('invoke-webrequest', 'T1105 - PowerShell web download'),
+    ('iex(', 'T1059.001 - Invoke-Expression'),
+    ('certutil -urlcache', 'T1105 - Certutil download'),
+    ('certutil -decode', 'T1140 - Certutil decode'),
+    ('wmic process call create', 'T1047 - WMI execution'),
+    ('bitsadmin /transfer', 'T1197 - BITS transfer'),
+    ('rundll32', 'T1218.011 - Rundll32'),
+    ('regsvr32', 'T1218.010 - Regsvr32'),
+    ('mshta', 'T1218.005 - Mshta'),
+    ('vssadmin delete shadows', 'T1490 - Inhibit System Recovery'),
+    ('net user /add', 'T1136 - Create Account'),
+    ('whoami /priv', 'T1033 - Privilege discovery'),
+    ('nltest', 'T1482 - Domain Trust Discovery'),
+]
+
+OFFICE_PARENTS = ['winword', 'excel', 'outlook', 'powerpnt']
+SHELL_CHILDREN = ['powershell', 'cmd.exe', 'wscript', 'cscript', 'mshta', 'rundll32']
+
+
+def add_finding(results, severity, title, description, mitre):
+    results["findings"].append({
+        "severity": severity, "title": title,
+        "description": description, "mitre": mitre
+    })
+
+
+def get_col(columns, keywords):
+    for col in columns:
+        low = col.lower()
+        for k in keywords:
+            if k in low:
+                return col
+    return None
+
+
+def is_private_ip(ip):
+    return (ip.startswith('10.') or ip.startswith('192.168.') or
+            ip.startswith('127.') or
+            any(ip.startswith(f'172.{i}.') for i in range(16, 32)))
+
+
+def lookup_country(ip):
+    """Free geo lookup. Returns country or None. Never crashes."""
+    try:
+        url = f"http://ip-api.com/json/{ip}"
+        with urllib.request.urlopen(url, timeout=3) as r:
+            data = json.loads(r.read().decode())
+            return data.get('country')
+    except Exception:
+        return None
+
+
+def check_hash_virustotal(file_hash):
+    """Check a hash on VirusTotal. Returns (malicious_count, total) or None. Never crashes."""
+    if not VIRUSTOTAL_API_KEY:
+        return None
+    try:
+        url = f"https://www.virustotal.com/api/v3/files/{file_hash}"
+        req = urllib.request.Request(url, headers={"x-apikey": VIRUSTOTAL_API_KEY})
+        with urllib.request.urlopen(req, timeout=5) as r:
+            data = json.loads(r.read().decode())
+            stats = data.get("data", {}).get("attributes", {}).get("last_analysis_stats", {})
+            malicious = stats.get("malicious", 0)
+            total = sum(stats.values()) or 0
+            return (malicious, total)
+    except Exception:
+        return None
+
+
+def detect_lotl(results, text):
+    low = text.lower()
+    found = [(p, m) for p, m in LOTL_PATTERNS if p in low]
+    if found:
+        names = ', '.join(p for p, _ in found[:6])
+        add_finding(results, "HIGH", "Living-off-the-Land (LotL) Activity",
+                    f"Abused legitimate tools detected: {names}.", found[0][1])
+
+
+def detect_parent_child(results, rows):
+    if not rows:
+        return
+    cols = rows[0].keys()
+    parent_col = get_col(cols, ['parent'])
+    child_col = get_col(cols, ['image', 'process', 'program', 'child'])
+    if not parent_col or not child_col:
+        return
+    hits = []
+    for row in rows:
+        p = str(row.get(parent_col, '')).lower()
+        c = str(row.get(child_col, '')).lower()
+        if any(o in p for o in OFFICE_PARENTS) and any(s in c for s in SHELL_CHILDREN):
+            hits.append(f"{row.get(parent_col)} → {row.get(child_col)}")
+    if hits:
+        add_finding(results, "HIGH", "Suspicious Parent-Child Process",
+                    f"Office app spawned a shell (possible macro malware): {', '.join(hits[:5])}",
+                    "T1204.002 - Malicious File")
+
+
+def detect_ports(results, rows, text):
+    found = set()
+    if rows:
+        port_col = get_col(rows[0].keys(), ['port'])
+        if port_col:
+            for row in rows:
+                val = str(row.get(port_col, '')).strip()
+                if val in SUSPICIOUS_PORTS:
+                    found.add(f"{val} ({SUSPICIOUS_PORTS[val]})")
+    else:
+        for port, name in SUSPICIOUS_PORTS.items():
+            if re.search(rf'[:\s]{port}\b', text):
+                found.add(f"{port} ({name})")
+    if found:
+        add_finding(results, "MEDIUM", "Suspicious Port Usage",
+                    f"Connections on unusual ports: {', '.join(sorted(found))}.", "T1571 - Non-Standard Port")
+
+
+def detect_dns(results, text):
+    low = text.lower()
+    suspicious = set(re.findall(r'\b([a-z0-9\-\.]+\.(?:ru|cn|xyz|top|tk|ml|ga|cf|gq))\b', low))
+    for m in re.findall(r'\b([a-z0-9\-]{30,}\.[a-z]{2,})\b', low):
+        suspicious.add(m + ' (possible DNS tunneling)')
+    if suspicious:
+        add_finding(results, "MEDIUM", "Suspicious Domains / DNS",
+                    f"Flagged: {', '.join(sorted(suspicious)[:6])}. High-risk TLDs or long subdomains.",
+                    "T1071.004 - DNS C2")
+
+
+def detect_large_transfer(results, rows):
+    if not rows:
+        return
+    byte_col = get_col(rows[0].keys(), ['byte', 'size', 'sent', 'out'])
+    if not byte_col:
+        return
+    big = []
+    for row in rows:
+        try:
+            val = int(re.sub(r'\D', '', str(row.get(byte_col, '0'))) or 0)
+            if val > 100_000_000:
+                big.append(f"{row.get('src_ip', '?')} → {row.get('dst_ip', '?')} ({val / 1e6:.0f}MB)")
+        except Exception:
+            pass
+    if big:
+        add_finding(results, "HIGH", "Large Outbound Data Transfer",
+                    f"Possible exfiltration: {', '.join(big[:5])}", "T1048 - Exfiltration")
+
+
+def detect_external_geo(results, text):
+    ips = set(re.findall(r'\b(?:\d{1,3}\.){3}\d{1,3}\b', text))
+    external = [ip for ip in ips if not is_private_ip(ip)]
+    if not external:
+        return
+    threats = []
+    for ip in external[:3]:
+        country = lookup_country(ip)
+        if country:
+            threats.append(f"{ip} ({country})")
+    if threats:
+        add_finding(results, "MEDIUM", "External Connections (Geo Check)",
+                    f"External IPs contacted: {', '.join(threats)}. Verify these locations are expected.",
+                    "T1583 - Acquire Infrastructure")
+
+
+def detect_hashes(results, text):
+    """Extract file hashes (MD5 / SHA1 / SHA256) as IOCs and check VirusTotal."""
+    hashes = {}
+    for m in re.findall(r'\b[a-fA-F0-9]{32}\b', text):
+        hashes[m] = 'MD5'
+    for m in re.findall(r'\b[a-fA-F0-9]{40}\b', text):
+        hashes[m] = 'SHA1'
+    for m in re.findall(r'\b[a-fA-F0-9]{64}\b', text):
+        hashes[m] = 'SHA256'
+
+    if not hashes:
+        return
+
+    results["summary"]["hashes"] = [
+        {"hash": h, "type": t} for h, t in list(hashes.items())[:10]
+    ]
+    sample = ', '.join(list(hashes.keys())[:2])
+    add_finding(results, "MEDIUM", "File Hashes Detected (IOCs)",
+                f"Found {len(hashes)} file hash(es) e.g. {sample}. "
+                f"Check these against VirusTotal / threat intel.",
+                "T1059 - Malicious file hashes present")
+
+    # Auto-check on VirusTotal if a key is configured (max 2 to respect rate limit)
+    if VIRUSTOTAL_API_KEY:
+        for h, t in list(hashes.items())[:2]:
+            vt = check_hash_virustotal(h)
+            if vt and vt[0] > 0:
+                add_finding(results, "HIGH", f"Known-Malicious Hash ({t})",
+                            f"Hash {h} flagged by {vt[0]}/{vt[1]} security engines on VirusTotal.",
+                            "T1059 - Confirmed malicious file")
+
+
+# ============================================
+# Analyze CSV files (Splunk exports etc.)
 # ============================================
 def analyze_csv(content, results):
     reader = csv.DictReader(io.StringIO(content))
     rows = list(reader)
 
     if not rows:
-        results["findings"].append({
-            "severity": "INFO",
-            "title": "Empty CSV",
-            "description": "The CSV file has no data rows.",
-            "mitre": ""
-        })
+        add_finding(results, "INFO", "Empty CSV", "The CSV file has no data rows.", "")
         return results
 
     results["summary"]["total_rows"] = len(rows)
     results["summary"]["columns"] = list(rows[0].keys())
 
-    # Find IP columns
-    ip_columns = [col for col in rows[0].keys() if 'ip' in col.lower() or 'src' in col.lower() or 'dst' in col.lower()]
-
+    # Dominant IP
+    ip_columns = [c for c in rows[0].keys() if 'ip' in c.lower() or 'src' in c.lower() or 'dst' in c.lower()]
     for col in ip_columns:
         ip_counts = Counter(row.get(col, '') for row in rows if row.get(col, ''))
         if ip_counts:
             top_ip, top_count = ip_counts.most_common(1)[0]
             results["summary"][f"top_{col}"] = {"ip": top_ip, "count": top_count}
-
             if top_count > len(rows) * 0.5:
-                results["findings"].append({
-                    "severity": "HIGH",
-                    "title": f"Dominant IP in {col}",
-                    "description": f"IP {top_ip} appears {top_count} times out of {len(rows)} events ({round(top_count/len(rows)*100)}%).",
-                    "mitre": "T1595 - Active Scanning"
-                })
+                add_finding(results, "HIGH", f"Dominant IP in {col}",
+                            f"IP {top_ip} appears {top_count}/{len(rows)} events ({round(top_count / len(rows) * 100)}%).",
+                            "T1595 - Active Scanning")
 
-    # Check for failed logins
-    failed_count = sum(1 for row in rows if any('fail' in str(v).lower() or '4625' in str(v) for v in row.values()))
-    if failed_count > 10:
-        results["findings"].append({
-            "severity": "HIGH",
-            "title": "Multiple Failed Logins Detected",
-            "description": f"Found {failed_count} failed login events. Possible brute force attack.",
-            "mitre": "T1110 - Brute Force"
-        })
+    # Failed logins
+    failed = sum(1 for row in rows if any('fail' in str(v).lower() or '4625' in str(v) for v in row.values()))
+    if failed > 10:
+        add_finding(results, "HIGH", "Multiple Failed Logins",
+                    f"Found {failed} failed login events. Possible brute force.", "T1110 - Brute Force")
 
-    # Check for unusual ports
-    port_columns = [col for col in rows[0].keys() if 'port' in col.lower()]
-    for col in port_columns:
-        ports = set(row.get(col, '') for row in rows if row.get(col, ''))
-        suspicious_ports = ports.intersection({'4444', '5555', '6666', '8888', '9999', '31337'})
-        if suspicious_ports:
-            results["findings"].append({
-                "severity": "MEDIUM",
-                "title": "Suspicious Port Usage",
-                "description": f"Connections on unusual ports: {', '.join(suspicious_ports)}.",
-                "mitre": "T1571 - Non-Standard Port"
-            })
+    # Run the enhanced detectors
+    detect_lotl(results, content)
+    detect_parent_child(results, rows)
+    detect_ports(results, rows, content)
+    detect_dns(results, content)
+    detect_large_transfer(results, rows)
+    detect_external_geo(results, content)
+    detect_hashes(results, content)
 
     if not results["findings"]:
-        results["findings"].append({
-            "severity": "LOW",
-            "title": "No Immediate Threats Detected",
-            "description": "Basic analysis did not find obvious suspicious patterns.",
-            "mitre": ""
-        })
-
+        add_finding(results, "LOW", "No Immediate Threats Detected",
+                    "Basic analysis found no obvious suspicious patterns.", "")
     return results
 
 
 # ============================================
-# Helper: Analyze log files
+# Analyze plain text log files
 # ============================================
 def analyze_log(content, results):
     lines = content.strip().split('\n')
     results["summary"]["total_lines"] = len(lines)
 
-    ip_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b'
-    all_ips = re.findall(ip_pattern, content)
+    # Dominant IP
+    all_ips = re.findall(r'\b(?:\d{1,3}\.){3}\d{1,3}\b', content)
     if all_ips:
-        ip_counts = Counter(all_ips)
-        top_ips = ip_counts.most_common(5)
-        results["summary"]["top_ips"] = [{"ip": ip, "count": count} for ip, count in top_ips]
-
+        top_ips = Counter(all_ips).most_common(5)
+        results["summary"]["top_ips"] = [{"ip": i, "count": c} for i, c in top_ips]
         if top_ips and top_ips[0][1] > len(lines) * 0.3:
-            results["findings"].append({
-                "severity": "HIGH",
-                "title": "Dominant IP Address",
-                "description": f"IP {top_ips[0][0]} appears {top_ips[0][1]} times.",
-                "mitre": "T1595 - Active Scanning"
-            })
+            add_finding(results, "HIGH", "Dominant IP Address",
+                        f"IP {top_ips[0][0]} appears {top_ips[0][1]} times.", "T1595 - Active Scanning")
 
-    failed_lines = [l for l in lines if 'fail' in l.lower() or 'invalid' in l.lower()]
-    if len(failed_lines) > 10:
-        results["findings"].append({
-            "severity": "HIGH",
-            "title": "Multiple Failed Logins",
-            "description": f"Found {len(failed_lines)} failed login events.",
-            "mitre": "T1110 - Brute Force"
-        })
+    # Failed logins
+    failed = [l for l in lines if 'fail' in l.lower() or 'invalid' in l.lower()]
+    if len(failed) > 10:
+        add_finding(results, "HIGH", "Multiple Failed Logins",
+                    f"Found {len(failed)} failed login events.", "T1110 - Brute Force")
 
-    suspicious_keywords = ['malware', 'exploit', 'injection', 'backdoor', 'trojan', 'ransomware']
-    for keyword in suspicious_keywords:
-        matches = [l for l in lines if keyword in l.lower()]
+    # Suspicious keywords
+    for kw in ['malware', 'exploit', 'injection', 'backdoor', 'trojan', 'ransomware']:
+        matches = [l for l in lines if kw in l.lower()]
         if matches:
-            results["findings"].append({
-                "severity": "HIGH",
-                "title": f"Suspicious Keyword: {keyword}",
-                "description": f"Found {len(matches)} lines containing '{keyword}'.",
-                "mitre": "T1059 - Command and Scripting Interpreter"
-            })
+            add_finding(results, "HIGH", f"Suspicious Keyword: {kw}",
+                        f"Found {len(matches)} lines containing '{kw}'.", "T1059 - Command Interpreter")
+
+    # Run the enhanced detectors (text-based)
+    detect_lotl(results, content)
+    detect_ports(results, None, content)
+    detect_dns(results, content)
+    detect_external_geo(results, content)
+    detect_hashes(results, content)
 
     if not results["findings"]:
-        results["findings"].append({
-            "severity": "LOW",
-            "title": "No Immediate Threats Detected",
-            "description": "Basic analysis did not find obvious suspicious patterns.",
-            "mitre": ""
-        })
-
+        add_finding(results, "LOW", "No Immediate Threats Detected",
+                    "Basic analysis found no obvious suspicious patterns.", "")
     return results
 
 
