@@ -1,0 +1,65 @@
+{"timestamp": "2024-03-15T08:00:09.000000", "event_type": "dns", "src_ip": "10.0.0.37", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "github.com"}}
+{"timestamp": "2024-03-15T08:00:37.000000", "event_type": "dns", "src_ip": "10.0.0.43", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "linkedin.com"}}
+{"timestamp": "2024-03-15T08:00:50.000000", "event_type": "dns", "src_ip": "10.0.0.49", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "cloudflare.com"}}
+{"timestamp": "2024-03-15T08:01:19.000000", "event_type": "dns", "src_ip": "10.0.0.40", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "office.com"}}
+{"timestamp": "2024-03-15T08:01:37.000000", "event_type": "dns", "src_ip": "10.0.0.56", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "cloudflare.com"}}
+{"timestamp": "2024-03-15T08:01:50.000000", "event_type": "dns", "src_ip": "10.0.0.30", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "github.com"}}
+{"timestamp": "2024-03-15T08:01:57.000000", "event_type": "dns", "src_ip": "10.0.0.27", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "office.com"}}
+{"timestamp": "2024-03-15T08:02:09.000000", "event_type": "dns", "src_ip": "10.0.0.58", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "office.com"}}
+{"timestamp": "2024-03-15T08:02:32.000000", "event_type": "dns", "src_ip": "10.0.0.49", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "linkedin.com"}}
+{"timestamp": "2024-03-15T08:02:49.000000", "event_type": "dns", "src_ip": "10.0.0.31", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "google.com"}}
+{"timestamp": "2024-03-15T08:03:09.000000", "event_type": "dns", "src_ip": "10.0.0.30", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "github.com"}}
+{"timestamp": "2024-03-15T08:03:29.000000", "event_type": "dns", "src_ip": "10.0.0.23", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "microsoft.com"}}
+{"timestamp": "2024-03-15T08:03:59.000000", "event_type": "dns", "src_ip": "10.0.0.26", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "microsoft.com"}}
+{"timestamp": "2024-03-15T08:04:12.000000", "event_type": "dns", "src_ip": "10.0.0.48", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "linkedin.com"}}
+{"timestamp": "2024-03-15T08:04:25.000000", "event_type": "dns", "src_ip": "10.0.0.45", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "google.com"}}
+{"timestamp": "2024-03-15T08:04:46.000000", "event_type": "dns", "src_ip": "10.0.0.22", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "google.com"}}
+{"timestamp": "2024-03-15T08:04:58.000000", "event_type": "dns", "src_ip": "10.0.0.56", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "office.com"}}
+{"timestamp": "2024-03-15T08:05:18.000000", "event_type": "dns", "src_ip": "10.0.0.45", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "github.com"}}
+{"timestamp": "2024-03-15T08:05:45.000000", "event_type": "dns", "src_ip": "10.0.0.40", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "linkedin.com"}}
+{"timestamp": "2024-03-15T08:06:12.000000", "event_type": "dns", "src_ip": "10.0.0.41", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "office.com"}}
+{"timestamp": "2024-03-15T08:06:42.000000", "event_type": "dns", "src_ip": "10.0.0.11", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "google.com"}}
+{"timestamp": "2024-03-15T08:06:56.000000", "event_type": "dns", "src_ip": "10.0.0.24", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "office.com"}}
+{"timestamp": "2024-03-15T08:07:23.000000", "event_type": "dns", "src_ip": "10.0.0.25", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "microsoft.com"}}
+{"timestamp": "2024-03-15T08:07:49.000000", "event_type": "dns", "src_ip": "10.0.0.47", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "microsoft.com"}}
+{"timestamp": "2024-03-15T08:08:09.000000", "event_type": "dns", "src_ip": "10.0.0.45", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "cloudflare.com"}}
+{"timestamp": "2024-03-15T08:08:25.000000", "event_type": "dns", "src_ip": "10.0.0.37", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "linkedin.com"}}
+{"timestamp": "2024-03-15T08:08:47.000000", "event_type": "dns", "src_ip": "10.0.0.31", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "microsoft.com"}}
+{"timestamp": "2024-03-15T08:09:14.000000", "event_type": "dns", "src_ip": "10.0.0.39", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "microsoft.com"}}
+{"timestamp": "2024-03-15T08:09:28.000000", "event_type": "dns", "src_ip": "10.0.0.26", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "github.com"}}
+{"timestamp": "2024-03-15T08:09:36.000000", "event_type": "dns", "src_ip": "10.0.0.56", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "github.com"}}
+{"timestamp": "2024-03-15T08:09:51.000000", "event_type": "dns", "src_ip": "10.0.0.17", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "linkedin.com"}}
+{"timestamp": "2024-03-15T08:10:13.000000", "event_type": "dns", "src_ip": "10.0.0.58", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "linkedin.com"}}
+{"timestamp": "2024-03-15T08:10:23.000000", "event_type": "dns", "src_ip": "10.0.0.22", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "github.com"}}
+{"timestamp": "2024-03-15T08:10:51.000000", "event_type": "dns", "src_ip": "10.0.0.40", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "microsoft.com"}}
+{"timestamp": "2024-03-15T08:11:19.000000", "event_type": "dns", "src_ip": "10.0.0.47", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "cloudflare.com"}}
+{"timestamp": "2024-03-15T08:11:43.000000", "event_type": "dns", "src_ip": "10.0.0.28", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "google.com"}}
+{"timestamp": "2024-03-15T08:11:54.000000", "event_type": "dns", "src_ip": "10.0.0.28", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "github.com"}}
+{"timestamp": "2024-03-15T08:12:10.000000", "event_type": "dns", "src_ip": "10.0.0.21", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "microsoft.com"}}
+{"timestamp": "2024-03-15T08:12:15.000000", "event_type": "dns", "src_ip": "10.0.0.55", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "cloudflare.com"}}
+{"timestamp": "2024-03-15T08:12:24.000000", "event_type": "dns", "src_ip": "10.0.0.27", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "google.com"}}
+{"timestamp": "2024-03-15T08:12:30.000000", "event_type": "dns", "src_ip": "10.0.0.45", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "microsoft.com"}}
+{"timestamp": "2024-03-15T08:12:57.000000", "event_type": "dns", "src_ip": "10.0.0.18", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "linkedin.com"}}
+{"timestamp": "2024-03-15T08:13:26.000000", "event_type": "dns", "src_ip": "10.0.0.41", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "google.com"}}
+{"timestamp": "2024-03-15T08:13:31.000000", "event_type": "dns", "src_ip": "10.0.0.46", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "microsoft.com"}}
+{"timestamp": "2024-03-15T08:13:51.000000", "event_type": "dns", "src_ip": "10.0.0.40", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "office.com"}}
+{"timestamp": "2024-03-15T08:14:06.000000", "event_type": "dns", "src_ip": "10.0.0.21", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "google.com"}}
+{"timestamp": "2024-03-15T08:14:19.000000", "event_type": "dns", "src_ip": "10.0.0.40", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "google.com"}}
+{"timestamp": "2024-03-15T08:14:26.000000", "event_type": "dns", "src_ip": "10.0.0.35", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "office.com"}}
+{"timestamp": "2024-03-15T08:14:33.000000", "event_type": "dns", "src_ip": "10.0.0.46", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "linkedin.com"}}
+{"timestamp": "2024-03-15T08:14:59.000000", "event_type": "dns", "src_ip": "10.0.0.13", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "github.com"}}
+{"timestamp": "2024-03-15T08:15:08.000000", "event_type": "dns", "src_ip": "10.0.0.46", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "microsoft.com"}}
+{"timestamp": "2024-03-15T08:15:15.000000", "event_type": "dns", "src_ip": "10.0.0.25", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "google.com"}}
+{"timestamp": "2024-03-15T08:15:37.000000", "event_type": "dns", "src_ip": "10.0.0.58", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "office.com"}}
+{"timestamp": "2024-03-15T08:16:01.000000", "event_type": "dns", "src_ip": "10.0.0.48", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "cloudflare.com"}}
+{"timestamp": "2024-03-15T08:16:13.000000", "event_type": "dns", "src_ip": "10.0.0.59", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "cloudflare.com"}}
+{"timestamp": "2024-03-15T08:16:30.000000", "event_type": "dns", "src_ip": "10.0.0.38", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "office.com"}}
+{"timestamp": "2024-03-15T08:16:44.000000", "event_type": "dns", "src_ip": "10.0.0.47", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "office.com"}}
+{"timestamp": "2024-03-15T08:16:58.000000", "event_type": "dns", "src_ip": "10.0.0.46", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "cloudflare.com"}}
+{"timestamp": "2024-03-15T08:17:04.000000", "event_type": "dns", "src_ip": "10.0.0.49", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "linkedin.com"}}
+{"timestamp": "2024-03-15T08:17:12.000000", "event_type": "dns", "src_ip": "10.0.0.58", "dest_ip": "8.8.8.8", "dns": {"type": "query", "rrname": "github.com"}}
+{"timestamp": "2024-03-15T08:41:40.000000", "event_type": "alert", "src_ip": "185.220.101.45", "src_port": 54321, "dest_ip": "10.0.0.42", "dest_port": 4444, "proto": "TCP", "alert": {"signature": "ET TROJAN Possible Metasploit Default Port 4444", "category": "Trojan-Activity", "severity": 1}}
+{"timestamp": "2024-03-15T08:41:45.000000", "event_type": "alert", "src_ip": "185.220.101.45", "src_port": 54322, "dest_ip": "10.0.0.42", "dest_port": 4444, "proto": "TCP", "alert": {"signature": "ET TROJAN Possible Metasploit Default Port 4444", "category": "Trojan-Activity", "severity": 1}}
+{"timestamp": "2024-03-15T08:41:50.000000", "event_type": "alert", "src_ip": "185.220.101.45", "src_port": 54323, "dest_ip": "10.0.0.42", "dest_port": 4444, "proto": "TCP", "alert": {"signature": "ET TROJAN Possible Metasploit Default Port 4444", "category": "Trojan-Activity", "severity": 1}}
+{"timestamp": "2024-03-15T08:42:20.000000", "event_type": "alert", "src_ip": "10.0.0.42", "src_port": 49152, "dest_ip": "185.220.101.45", "dest_port": 443, "proto": "TCP", "alert": {"signature": "ET POLICY Suspicious .xyz domain lookup", "category": "Policy", "severity": 2}}
+{"timestamp": "2024-03-15T08:42:40.000000", "event_type": "fileinfo", "src_ip": "10.0.0.42", "dest_ip": "185.220.101.45", "dest_port": 443, "proto": "TCP", "fileinfo": {"filename": "invoice.exe", "sha256": "091b572abf984382a95b9455e407f284e24bfb616890abc3fcdb2be68813f39d"}}
