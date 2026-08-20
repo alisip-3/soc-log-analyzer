@@ -55,14 +55,12 @@ def analyze_file():
             "summary": {}
         }
 
-        if filename.endswith('.csv'):
+               if filename.endswith('.csv'):
             results = analyze_csv(content, results)
-        elif filename.endswith('.log') or filename.endswith('.txt'):
+        elif filename.endswith('.json'):
+            results = analyze_json(content, results)
+        elif filename.endswith(('.log', '.txt', '.tsv')):
             results = analyze_log(content, results)
-        else:
-            add_finding(results, "INFO", "Unknown file type",
-                        "File type not fully supported. Showing basic stats.", "")
-            results["summary"] = {"total_lines": len(lines)}
 
         return jsonify(results)
 
@@ -272,10 +270,10 @@ def detect_parent_child(results, rows):
 def detect_ports(results, rows, text):
     found = set()
     if rows:
-        port_col = get_col(rows[0].keys(), ['port'])
-        if port_col:
+        port_cols = [c for c in rows[0].keys() if 'port' in c.lower()]
+        for col in port_cols:
             for row in rows:
-                val = str(row.get(port_col, '')).strip()
+                val = str(row.get(col, '')).strip()
                 if val in SUSPICIOUS_PORTS:
                     found.add(f"{val} ({SUSPICIOUS_PORTS[val]})")
     else:
@@ -285,7 +283,6 @@ def detect_ports(results, rows, text):
     if found:
         add_finding(results, "MEDIUM", "Suspicious Port Usage",
                     f"Connections on unusual ports: {', '.join(sorted(found))}.", "T1571 - Non-Standard Port")
-
 
 def detect_dns(results, text):
     low = text.lower()
@@ -364,7 +361,94 @@ def detect_hashes(results, text):
                             f"Hash {h} flagged by {vt[0]}/{vt[1]} security engines on VirusTotal.",
                             "T1059 - Confirmed malicious file")
 
+def detect_beaconing(results, rows):
+    """Detect C2 beaconing patterns (RITA-style)."""
+    if not rows:
+        return
+    score_col = get_col(rows[0].keys(), ['score'])
+    conn_col = get_col(rows[0].keys(), ['connections', 'count'])
+    src_col = get_col(rows[0].keys(), ['src', 'source'])
+    dst_col = get_col(rows[0].keys(), ['dst', 'destination', 'dest'])
+    hits = []
+    for row in rows:
+        try:
+            score = float(row.get(score_col, 0)) if score_col else 0
+            conns = int(row.get(conn_col, 0)) if conn_col else 0
+        except Exception:
+            continue
+        if score >= 0.8 or conns >= 100:
+            s = row.get(src_col, '?') if src_col else '?'
+            d = row.get(dst_col, '?') if dst_col else '?'
+            hits.append(f"{s} → {d}")
+    if hits:
+        add_finding(results, "HIGH", "Beaconing / C2 Pattern (RITA)",
+                    f"Regular callback pattern: {', '.join(hits[:5])}. Consistent with C2 beaconing.",
+                    "T1071.001 - Web C2")
 
+
+def analyze_json(content, results):
+    """Analyze JSON / JSON-Lines files (Suricata EVE, RITA JSON)."""
+    rows = []
+    # JSON Lines (Suricata EVE)
+    try:
+        for line in content.strip().split('\n'):
+            line = line.strip().rstrip(',')
+            if line in ('', '[', ']'):
+                continue
+            obj = json.loads(line)
+            if isinstance(obj, dict):
+                rows.append(obj)
+    except Exception:
+        rows = []
+    # JSON array fallback
+    if not rows:
+        try:
+            data = json.loads(content)
+            if isinstance(data, list):
+                rows = [d for d in data if isinstance(d, dict)]
+        except Exception:
+            rows = []
+
+    if not rows:
+        add_finding(results, "INFO", "Unreadable JSON", "Could not parse JSON objects.", "")
+        return results
+
+    results["summary"]["total_rows"] = len(rows)
+
+    # Suricata alert summary
+    alerts = [r for r in rows if r.get('event_type') == 'alert']
+    if alerts:
+        sigs = set()
+        for a in alerts:
+            al = a.get('alert')
+            if isinstance(al, dict) and al.get('signature'):
+                sigs.add(al['signature'])
+        add_finding(results, "HIGH", "IDS Alerts Present (Suricata)",
+                    f"{len(alerts)} alerts. Signatures: {', '.join(list(sigs)[:3])}.", "T1059 - IDS alerts")
+
+    # Dominant source IP
+    src_ips = Counter(str(r.get('src_ip', '')) for r in rows if r.get('src_ip'))
+    if src_ips:
+        top_ip, top_count = src_ips.most_common(1)[0]
+        results["summary"]["top_src_ip"] = {"ip": top_ip, "count": top_count}
+        if top_count > len(rows) * 0.5:
+            add_finding(results, "HIGH", "Dominant Source IP",
+                        f"IP {top_ip} appears {top_count}/{len(rows)} events.", "T1595 - Active Scanning")
+
+    # Run all detectors
+    detect_parent_child(results, rows)
+    detect_ports(results, rows, content)
+    detect_large_transfer(results, rows)
+    detect_beaconing(results, rows)
+    detect_lotl(results, content)
+    detect_dns(results, content)
+    detect_hashes(results, content)
+    detect_external_geo(results, content)
+
+    if not results["findings"]:
+        add_finding(results, "LOW", "No Immediate Threats Detected", "No obvious suspicious patterns.", "")
+    return results
+    
 # ============================================
 # Analyze CSV files (Splunk exports etc.)
 # ============================================
@@ -405,6 +489,7 @@ def analyze_csv(content, results):
     detect_large_transfer(results, rows)
     detect_external_geo(results, content)
     detect_hashes(results, content)
+    detect_beaconing(results, rows)
 
     if not results["findings"]:
         add_finding(results, "LOW", "No Immediate Threats Detected",
