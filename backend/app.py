@@ -45,28 +45,33 @@ def analyze_file():
     filename = file.filename.lower()
 
     try:
-        content = file.read().decode('utf-8', errors='ignore')
-        lines = content.strip().split('\n')
-
+        raw = file.read()
         results = {
             "filename": file.filename,
-            "total_lines": len(lines),
+            "total_lines": 0,
             "findings": [],
             "summary": {}
         }
 
-               if filename.endswith('.csv'):
-            results = analyze_csv(content, results)
-        elif filename.endswith('.json'):
-            results = analyze_json(content, results)
-        elif filename.endswith(('.log', '.txt', '.tsv')):
-            results = analyze_log(content, results)
+        if filename.endswith(('.pcap', '.cap', '.pcapng')):
+            results = analyze_pcap(raw, results)
+        else:
+            content = raw.decode('utf-8', errors='ignore')
+            results["total_lines"] = len(content.strip().split('\n'))
+            if filename.endswith('.csv'):
+                results = analyze_csv(content, results)
+            elif filename.endswith('.json'):
+                results = analyze_json(content, results)
+            elif filename.endswith(('.log', '.txt', '.tsv')):
+                results = analyze_log(content, results)
+            else:
+                add_finding(results, "INFO", "Unknown file type",
+                            "File type not fully supported.", "")
 
         return jsonify(results)
-
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
+        
 
 # ============================================
 # ENDPOINT 2: Generate AI Report
@@ -448,7 +453,88 @@ def analyze_json(content, results):
     if not results["findings"]:
         add_finding(results, "LOW", "No Immediate Threats Detected", "No obvious suspicious patterns.", "")
     return results
-    
+ def analyze_pcap(raw, results):
+    """Parse a binary PCAP with dpkt and run detectors."""
+    try:
+        import dpkt, socket, io
+    except ImportError:
+        add_finding(results, "INFO", "PCAP support not installed",
+                    "dpkt library missing on server.", "")
+        return results
+
+    try:
+        try:
+            pcap = dpkt.pcap.Reader(io.BytesIO(raw))
+        except Exception:
+            pcap = dpkt.pcapng.Reader(io.BytesIO(raw))
+    except Exception:
+        add_finding(results, "INFO", "Unreadable PCAP", "Could not parse the capture.", "")
+        return results
+
+    ip_counter = Counter()
+    ports = set()
+    dns_names = []
+    total = 0
+    MAX = 50000  # cap to stay fast on free hosting
+
+    for ts, buf in pcap:
+        total += 1
+        if total > MAX:
+            break
+        try:
+            eth = dpkt.ethernet.Ethernet(buf)
+            ip = eth.data
+            if not isinstance(ip, dpkt.ip.IP):
+                continue
+            src = socket.inet_ntoa(ip.src)
+            dst = socket.inet_ntoa(ip.dst)
+            ip_counter[src] += 1
+            trans = ip.data
+            if isinstance(trans, (dpkt.tcp.TCP, dpkt.udp.UDP)):
+                ports.add(trans.dport)
+                if trans.dport == 53 or trans.sport == 53:
+                    try:
+                        dns = dpkt.dns.DNS(trans.data)
+                        for q in dns.qd:
+                            dns_names.append(q.name.decode('errors', 'ignore'))
+                    except Exception:
+                        pass
+        except Exception:
+            continue
+
+    results["summary"]["total_packets"] = total
+
+    if ip_counter:
+        top_ip, top_count = ip_counter.most_common(1)[0]
+        results["summary"]["top_src_ip"] = {"ip": top_ip, "count": top_count}
+        if total and top_count > total * 0.4:
+            add_finding(results, "HIGH", "Dominant Talker",
+                        f"IP {top_ip} sent {top_count}/{total} packets.", "T1595 - Active Scanning")
+
+    susp = {str(p) for p in ports if str(p) in SUSPICIOUS_PORTS}
+    if susp:
+        add_finding(results, "MEDIUM", "Suspicious Ports",
+                    f"Ports seen: {', '.join(sorted(susp))}.", "T1571 - Non-Standard Port")
+
+    if dns_names:
+        detect_dns(results, ' '.join(dns_names))
+
+    ext = [ip for ip in ip_counter if not is_private_ip(ip)]
+    if ext:
+        threats = []
+        for ip in ext[:3]:
+            c = lookup_country(ip)
+            if c:
+                threats.append(f"{ip} ({c})")
+        if threats:
+            add_finding(results, "MEDIUM", "External Connections (Geo Check)",
+                        f"External IPs: {', '.join(threats)}.", "T1583 - Acquire Infrastructure")
+
+    if not results["findings"]:
+        add_finding(results, "LOW", "No Immediate Threats Detected",
+                    "No obvious suspicious patterns in this capture.", "")
+    return results
+     
 # ============================================
 # Analyze CSV files (Splunk exports etc.)
 # ============================================
