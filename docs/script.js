@@ -127,6 +127,13 @@ dropZone.addEventListener('drop', (e) => {
 
 analyzeBtn.addEventListener('click', async () => {
     if (!selectedFile) return;
+
+    // Block files over 20 MB (free hosting limit)
+    if (selectedFile.size > 20 * 1024 * 1024) {
+        alert('⚠️ File too large. Please upload a file under 20 MB (free hosting limit).');
+        return;
+    }
+
     loading.style.display = 'block';
     fileInfo.style.display = 'none';
 
@@ -135,7 +142,10 @@ analyzeBtn.addEventListener('click', async () => {
 
     try {
         const response = await fetch(`${API_URL}/analyze`, { method: 'POST', body: formData });
-        if (!response.ok) throw new Error(`Server error: ${response.status}`);
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || `Server error: ${response.status}`);
+        }
         const data = await response.json();
         analysisFindings = data.findings || [];
         displayAnalysisResults(data);
