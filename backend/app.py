@@ -11,7 +11,13 @@ import google.generativeai as genai
 
 app = Flask(__name__)
 CORS(app)
+app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20 MB upload limit
 
+
+@app.errorhandler(413)
+def too_big(e):
+    return jsonify({"error": "File too large. Free hosting limit is 20 MB. Try a smaller capture."}), 413
+    
 # ============================================
 # API CONFIGURATION
 # ============================================
