@@ -154,27 +154,26 @@ RULES:
 - Write in markdown format.
 """
 
-       try:
-            safety_settings = {
-                'HARM_CATEGORY_HARASSMENT': 'BLOCK_NONE',
-                'HARM_CATEGORY_HATE_SPEECH': 'BLOCK_NONE',
-                'HARM_CATEGORY_SEXUALLY_EXPLICIT': 'BLOCK_NONE',
-                'HARM_CATEGORY_DANGEROUS_CONTENT': 'BLOCK_NONE',
-            }
+    try:
+        safety_settings = {
+            'HARM_CATEGORY_HARASSMENT': 'BLOCK_NONE',
+            'HARM_CATEGORY_HATE_SPEECH': 'BLOCK_NONE',
+            'HARM_CATEGORY_SEXUALLY_EXPLICIT': 'BLOCK_NONE',
+            'HARM_CATEGORY_DANGEROUS_CONTENT': 'BLOCK_NONE',
+        }
+        
+        response = model.generate_content(prompt, safety_settings=safety_settings)
+        
+        try:
+            report_text = response.text
+        except ValueError:
+            return jsonify({"error": "Gemini blocked the response. Try analyzing a smaller file."}), 500
             
-            response = model.generate_content(prompt, safety_settings=safety_settings)
-            
-            # Safely get the text (prevents crash if Gemini blocks it silently)
-            try:
-                report_text = response.text
-            except ValueError:
-                return jsonify({"error": "Gemini blocked the response. Try analyzing a smaller file or simpler findings."}), 500
-                
-            return jsonify({"report": report_text})
-        except Exception as e:
-            import traceback
-            traceback.print_exc() # This prints the EXACT error to Render logs
-            return jsonify({"error": f"AI generation failed: {str(e)}"}), 500
+        return jsonify({"report": report_text})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"AI generation failed: {str(e)}"}), 500
         
 # ============================================
 # ENHANCED ANALYSIS ENGINE
