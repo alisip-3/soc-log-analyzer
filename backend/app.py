@@ -157,12 +157,26 @@ RULES:
 - Write in markdown format.
 """
 
-    try:
-        response = model.generate_content(prompt)
+     try:
+        # Tell Gemini to ignore safety filters for defensive cybersecurity research
+        safety_settings = [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+        ]
+        
+        response = model.generate_content(prompt, safety_settings=safety_settings)
+        
+        # Check if Gemini blocked it silently
+        if not response.candidates:
+            return jsonify({"error": "Gemini blocked this request. Try using less aggressive wording."}), 500
+            
         return jsonify({"report": response.text})
     except Exception as e:
+        print("GEMINI ERROR:", str(e))  # This will show up in Render logs if it still fails
         return jsonify({"error": f"AI generation failed: {str(e)}"}), 500
-
+        
 # ============================================
 # ENHANCED ANALYSIS ENGINE
 # ============================================
