@@ -26,6 +26,36 @@ function goBack() {
     document.getElementById('modeSelection').style.display = 'block';
 }
 
+function resetAll() {
+    // Clear Mode 1 state
+    selectedFile = null;
+    document.getElementById('fileInput').value = '';
+    document.getElementById('fileName').textContent = '';
+    document.getElementById('fileInfo').style.display = 'none';
+    document.getElementById('analysisResults').style.display = 'none';
+    document.getElementById('additionalNotes').value = '';
+    document.getElementById('incidentName1').value = '';
+    
+    // Clear Mode 2 state
+    document.getElementById('incidentName2').value = '';
+    document.getElementById('findingsText').value = '';
+    document.getElementById('notesUploadBtn').textContent = '📂 Upload Notes File';
+    document.getElementById('notesFileInput').value = '';
+
+    // Clear screenshots
+    shots1 = []; shots2 = []; activeShots = [];
+    document.getElementById('shotsPreview1').innerHTML = '';
+    document.getElementById('shotsPreview2').innerHTML = '';
+
+    // Hide everything and show home
+    document.getElementById('reportSection').style.display = 'none';
+    document.getElementById('uploadSection').style.display = 'none';
+    document.getElementById('writeSection').style.display = 'none';
+    document.getElementById('modeSelection').style.display = 'block';
+    
+    window.scrollTo(0, 0); // Scroll to top
+}
+
 // ============================================
 // Screenshot Upload (shared for both modes)
 // ============================================
