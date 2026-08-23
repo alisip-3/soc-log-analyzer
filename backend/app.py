@@ -24,7 +24,7 @@ def too_big(e):
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel("gemini-2.0-flash")
+    model = genai.GenerativeModel("gemini-1.5-flash-8b-latest")
 else:
     model = None
 
@@ -165,9 +165,11 @@ RULES:
         response = model.generate_content(prompt, safety_settings=safety_settings)
         
         try:
-            report_text = response.text
-        except ValueError:
-            return jsonify({"error": "Gemini blocked the response. Try analyzing a smaller file."}), 500
+           report_text = response.text
+               if not report_text:
+                   raise ValueError("Empty response")
+           except ValueError:
+               return jsonify({"report": "⚠️ Gemini's safety filters blocked this request because of the cybersecurity keywords (malware, exploits, brute force). \n\nTo fix this:\n1. Try generating the report again (sometimes it passes on the second try).\n2. Or, edit your findings to remove the most aggressive words before generating."}), 200
             
         return jsonify({"report": report_text})
     except Exception as e:
