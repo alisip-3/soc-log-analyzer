@@ -82,9 +82,10 @@ def analyze_file():
 # ============================================
 # ENDPOINT 2: Generate AI Report 
 # ============================================
+
 @app.route('/generate-report', methods=['POST'])
 def generate_report():
-    if not client:
+    if not GEMINI_API_KEY:
         return jsonify({"error": "Gemini API key not configured"}), 500
 
     data = request.get_json()
@@ -123,6 +124,7 @@ INCIDENT RESPONSE REPORT: {incident_name}
 2. EXECUTIVE SUMMARY
 
 3. MITRE ATT&CK KILL CHAIN MAPPING
+(Write one line per technique, like: Initial Access: T1566 (Phishing) - Evidence: ...)
 
 4. INCIDENT TIMELINE
 
@@ -136,32 +138,55 @@ INCIDENT RESPONSE REPORT: {incident_name}
 
 FORMATTING RULES (VERY IMPORTANT):
 - Write in clean, readable plain text.
-- Do NOT use markdown symbols: no #, no **, no |, no backticks, no tables.
+- Do NOT use markdown symbols: no #, no **, no |, no backticks.
 - Use UPPERCASE for section titles and put a line of dashes (----) under each title.
-- For the MITRE mapping, write one line per technique, like:
-  Initial Access: T1566 (Phishing) - Evidence: ...
 - Be specific. Reference the actual IPs, ports, hashes and events from the findings.
 - Do NOT invent information that is not in the findings.
 - Use real MITRE ATT&CK technique IDs (e.g., T1566, T1078, T1021, T1110).
 """
 
-    # Try the newest models first. Real AI only - no template.
-    models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest", "gemini-pro"]
+    # Models to try (newest to oldest)
+    models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-pro"]
     last_error = None
 
     for model_name in models_to_try:
         try:
-            resp = client.models.generate_content(model=model_name, contents=prompt)
-            report_text = resp.text
-            if report_text:
-                print(f"REPORT GENERATED WITH MODEL: {model_name}")
-                return jsonify({"report": report_text})
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
+            
+            payload = json.dumps({
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.7, "maxOutputTokens": 8192}
+            }).encode('utf-8')
+            
+            req = urllib.request.Request(
+                url,
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            
+            with urllib.request.urlopen(req, timeout=60) as response:
+                result = json.loads(response.read().decode('utf-8'))
+            
+            # Extract the text from the response
+            candidates = result.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                if parts and "text" in parts[0]:
+                    report_text = parts[0]["text"]
+                    print(f"SUCCESS with model: {model_name}")
+                    return jsonify({"report": report_text})
+            
+            last_error = "No text in response"
+            print(f"Model {model_name}: empty response")
+            
         except Exception as e:
-            last_error = e
-            print(f"MODEL {model_name} FAILED: {e}")
+            last_error = str(e)
+            print(f"Model {model_name} failed: {e}")
             continue
 
-    return jsonify({"error": f"AI failed on all models. Last error: {last_error}"}), 500
+    # If we get here, all models failed
+    return jsonify({"error": f"All models failed. Last error: {last_error}"}), 500
 
 
 # ============================================
