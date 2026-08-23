@@ -24,7 +24,7 @@ def too_big(e):
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel("gemini-1.5-flash-8b-latest")
+    model = genai.GenerativeModel("gemini-1.5-flash-latest")
 else:
     model = None
 
