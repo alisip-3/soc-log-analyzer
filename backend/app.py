@@ -165,11 +165,11 @@ RULES:
         response = model.generate_content(prompt, safety_settings=safety_settings)
         
         try:
-           report_text = response.text
-               if not report_text:
-                   raise ValueError("Empty response")
-           except ValueError:
-               return jsonify({"report": "⚠️ Gemini's safety filters blocked this request because of the cybersecurity keywords (malware, exploits, brute force). \n\nTo fix this:\n1. Try generating the report again (sometimes it passes on the second try).\n2. Or, edit your findings to remove the most aggressive words before generating."}), 200
+            report_text = response.text
+            if not report_text:
+                raise ValueError("Empty response")
+        except ValueError:
+            return jsonify({"report": "⚠️ Gemini's safety filters blocked this request because of the cybersecurity keywords (malware, exploits, brute force). \n\nTo fix this:\n1. Try generating the report again (sometimes it passes on the second try).\n2. Or, edit your findings to remove the most aggressive words before generating."}), 200
             
         return jsonify({"report": report_text})
     except Exception as e:
