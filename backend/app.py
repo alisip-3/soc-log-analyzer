@@ -5,10 +5,9 @@ import io
 import re
 import os
 import json
-from datetime import datetime
 import urllib.request
 from collections import Counter
-import google.generativeai as genai
+from google import genai
 
 app = Flask(__name__)
 CORS(app)
@@ -18,16 +17,16 @@ app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20 MB upload limit
 @app.errorhandler(413)
 def too_big(e):
     return jsonify({"error": "File too large. Free hosting limit is 20 MB. Try a smaller capture."}), 413
-    
+
+
 # ============================================
-# API CONFIGURATION
+# API CONFIGURATION 
 # ============================================
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel("gemini-pro")
+    client = genai.Client(api_key=GEMINI_API_KEY)
 else:
-    model = None
+    client = None
 
 VIRUSTOTAL_API_KEY = os.environ.get("VIRUSTOTAL_API_KEY", "")
 
@@ -78,14 +77,14 @@ def analyze_file():
         return jsonify(results)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-        
+
 
 # ============================================
-# ENDPOINT 2: Generate AI Report
+# ENDPOINT 2: Generate AI Report 
 # ============================================
 @app.route('/generate-report', methods=['POST'])
 def generate_report():
-    if not model:
+    if not client:
         return jsonify({"error": "Gemini API key not configured"}), 500
 
     data = request.get_json()
@@ -100,9 +99,9 @@ def generate_report():
 
     screenshots_block = ""
     if screenshots_text:
-        screenshots_block = f"\n**Evidence Screenshots Provided:**\n{screenshots_text}\n"
+        screenshots_block = f"\nEVIDENCE SCREENSHOTS PROVIDED BY THE ANALYST:\n{screenshots_text}\n"
 
-    prompt = f"""You are a senior defensive SOC analyst writing a professional Incident Response report for educational and defensive cybersecurity research purposes.
+    prompt = f"""You are a senior defensive SOC analyst writing a professional Incident Response report for defensive cybersecurity purposes.
 
 Incident Name: {incident_name}
 Severity: {severity}
@@ -115,88 +114,56 @@ ADDITIONAL ANALYST NOTES:
 {screenshots_block}
 
 Write a complete, professional Incident Response report with EXACTLY these sections:
-# Incident Response Report: {incident_name}
-## 1. Header & Metadata (Include ID, Severity, Status)
-## 2. Executive Summary
-## 3. MITRE ATT&CK Kill Chain Mapping (Use a Markdown table)
-## 4. Incident Timeline
-## 5. Technical Analysis
-## 6. Forensic Evidence & Screenshots
-## 7. Containment, Eradication & Recovery
-## 8. Post-Incident Recommendations
 
-RULES: Be specific. Reference actual data. Use real MITRE ATT&CK IDs. Write in markdown format.
+INCIDENT RESPONSE REPORT: {incident_name}
+
+1. HEADER & METADATA
+(Incident ID, Severity, Status, Analyst, Date)
+
+2. EXECUTIVE SUMMARY
+
+3. MITRE ATT&CK KILL CHAIN MAPPING
+
+4. INCIDENT TIMELINE
+
+5. TECHNICAL ANALYSIS
+
+6. FORENSIC EVIDENCE & SCREENSHOTS
+
+7. CONTAINMENT, ERADICATION & RECOVERY
+
+8. POST-INCIDENT RECOMMENDATIONS
+
+FORMATTING RULES (VERY IMPORTANT):
+- Write in clean, readable plain text.
+- Do NOT use markdown symbols: no #, no **, no |, no backticks, no tables.
+- Use UPPERCASE for section titles and put a line of dashes (----) under each title.
+- For the MITRE mapping, write one line per technique, like:
+  Initial Access: T1566 (Phishing) - Evidence: ...
+- Be specific. Reference the actual IPs, ports, hashes and events from the findings.
+- Do NOT invent information that is not in the findings.
+- Use real MITRE ATT&CK technique IDs (e.g., T1566, T1078, T1021, T1110).
 """
 
-    # 1. TRY THE AI
-    try:
-        response = model.generate_content(prompt)
-        report_text = response.text
-        if not report_text:
-            raise ValueError("Empty AI response")
-        return jsonify({"report": report_text})
-            
-    except Exception as e:
-        # 2. AI FAILED! TRIGGER THE BULLETPROOF OFFLINE FALLBACK
-        print(f"AI FAILED: {e}. Using offline fallback report.")
-        
-        fallback_report = f"""# Incident Response Report: {incident_name}
+    # Try the newest models first. Real AI only - no template.
+    models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest", "gemini-pro"]
+    last_error = None
 
-## 1. Header & Metadata
-- **Incident ID:** IR-{incident_name.replace(' ', '-')}-001
-- **Severity:** {severity}
-- **Status:** Under Investigation
-- **Analyst:** SOC Team (Alisi Pinhasov)
-- **Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+    for model_name in models_to_try:
+        try:
+            resp = client.models.generate_content(model=model_name, contents=prompt)
+            report_text = resp.text
+            if report_text:
+                print(f"REPORT GENERATED WITH MODEL: {model_name}")
+                return jsonify({"report": report_text})
+        except Exception as e:
+            last_error = e
+            print(f"MODEL {model_name} FAILED: {e}")
+            continue
 
-## 2. Executive Summary
-An investigation was conducted into "{incident_name}". The automated analysis engine parsed the provided evidence and identified several critical security events. This report details the technical findings, maps them to the MITRE ATT&CK framework, and provides actionable recommendations for containment and remediation.
+    return jsonify({"error": f"AI failed on all models. Last error: {last_error}"}), 500
 
-## 3. MITRE ATT&CK Kill Chain Mapping
-*The following techniques were identified in the provided logs/evidence:*
 
-| Kill Chain Phase | MITRE Technique | Evidence Summary |
-|---|---|---|
-| Initial Access | T1595 - Active Scanning | Dominant IP addresses and brute force attempts detected. |
-| Execution | T1059 - Command Interpreter | Suspicious PowerShell, certutil, or cmd.exe activity detected. |
-| Persistence | T1547 - Boot/Logon Autostart | Potential registry or startup modifications indicated. |
-| Credential Access | T1110 - Brute Force | Multiple failed authentication events logged. |
-| Command and Control | T1071 - Application Layer Protocol | Suspicious external DNS queries and non-standard ports observed. |
-| Exfiltration | T1048 - Exfiltration Over Alternative Protocol | Large outbound data transfers detected. |
-
-## 4. Incident Timeline
-Based on the chronological analysis of the provided logs, the attack progressed as follows:
-1. **Initial Reconnaissance:** External actors scanned the perimeter (detected via repeated connection attempts).
-2. **Exploitation/Access:** Brute force or phishing led to initial compromise.
-3. **Internal Movement:** Suspicious parent-child processes (e.g., Office spawning PowerShell) indicate lateral movement.
-4. **Data Staging/Exfil:** Large outbound traffic or DNS tunneling attempts were flagged.
-
-## 5. Technical Analysis
-The automated parser identified the following raw indicators of compromise (IOCs) and behavioral anomalies:
-
-{findings_text}
-
-## 6. Forensic Evidence & Screenshots
-{screenshots_block if screenshots_block else "No additional screenshots were provided with this report."}
-
-## 7. Containment, Eradication & Recovery
-**Immediate Actions (Containment):**
-- Isolate the affected host(s) from the network immediately.
-- Block the identified malicious IP addresses at the perimeter firewall.
-- Reset credentials for all compromised or potentially compromised accounts.
-
-**Eradication:**
-- Re-image affected endpoints if rootkits or deep persistence mechanisms are suspected.
-- Remove identified malicious files (refer to hash IOCs).
-
-## 8. Post-Incident Recommendations
-- Implement stricter egress filtering to block non-standard ports.
-- Enforce Multi-Factor Authentication (MFA) for all remote access and administrative accounts.
-- Deploy Endpoint Detection and Response (EDR) to catch Living-off-the-Land (LotL) behaviors in real-time.
-"""
-        
-        return jsonify({"report": fallback_report})
-        
 # ============================================
 # ENHANCED ANALYSIS ENGINE
 # ============================================
@@ -326,6 +293,7 @@ def detect_ports(results, rows, text):
         add_finding(results, "MEDIUM", "Suspicious Port Usage",
                     f"Connections on unusual ports: {', '.join(sorted(found))}.", "T1571 - Non-Standard Port")
 
+
 def detect_dns(results, text):
     low = text.lower()
     suspicious = set(re.findall(r'\b([a-z0-9\-\.]+\.(?:ru|cn|xyz|top|tk|ml|ga|cf|gq))\b', low))
@@ -401,6 +369,7 @@ def detect_hashes(results, text):
                             f"Hash {h} flagged by {vt[0]}/{vt[1]} security engines on VirusTotal.",
                             "T1059 - Confirmed malicious file")
 
+
 def detect_beaconing(results, rows):
     if not rows:
         return
@@ -425,6 +394,9 @@ def detect_beaconing(results, rows):
                     "T1071.001 - Web C2")
 
 
+# ============================================
+# JSON ANALYZER (Suricata)
+# ============================================
 def analyze_json(content, results):
     rows = []
     try:
@@ -483,8 +455,10 @@ def analyze_json(content, results):
     return results
 
 
+# ============================================
+# PCAP ANALYZER
+# ============================================
 def analyze_pcap(raw, results):
-    """Parse a binary PCAP with dpkt and run detectors."""
     try:
         import dpkt, socket
     except ImportError:
@@ -505,7 +479,7 @@ def analyze_pcap(raw, results):
     ports = set()
     dns_names = []
     total = 0
-    MAX = 50000  
+    MAX = 50000
 
     for ts, buf in pcap:
         total += 1
@@ -563,9 +537,10 @@ def analyze_pcap(raw, results):
         add_finding(results, "LOW", "No Immediate Threats Detected",
                     "No obvious suspicious patterns in this capture.", "")
     return results
-     
+
+
 # ============================================
-# Analyze CSV files (Splunk exports etc.)
+# CSV ANALYZER (Splunk / RITA)
 # ============================================
 def analyze_csv(content, results):
     reader = csv.DictReader(io.StringIO(content))
@@ -610,7 +585,7 @@ def analyze_csv(content, results):
 
 
 # ============================================
-# Analyze plain text log files
+# LOG ANALYZER (Zeek / Linux)
 # ============================================
 def analyze_log(content, results):
     lines = content.strip().split('\n')
