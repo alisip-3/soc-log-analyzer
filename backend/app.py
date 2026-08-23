@@ -154,20 +154,26 @@ RULES:
 - Write in markdown format.
 """
 
-    safety_settings = [
-        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-    ]
-
-    try:
+       try:
+        safety_settings = {
+            'HARM_CATEGORY_HARASSMENT': 'BLOCK_NONE',
+            'HARM_CATEGORY_HATE_SPEECH': 'BLOCK_NONE',
+            'HARM_CATEGORY_SEXUALLY_EXPLICIT': 'BLOCK_NONE',
+            'HARM_CATEGORY_DANGEROUS_CONTENT': 'BLOCK_NONE',
+        }
+        
         response = model.generate_content(prompt, safety_settings=safety_settings)
-        if not hasattr(response, 'text') or not response.text:
-            return jsonify({"error": "Gemini blocked the request due to safety filters. Try shorter findings."}), 500
-        return jsonify({"report": response.text})
+        
+        # Safely get the text (prevents crash if Gemini blocks it silently)
+        try:
+            report_text = response.text
+        except ValueError:
+            return jsonify({"error": "Gemini blocked the response. Try analyzing a smaller file or simpler findings."}), 500
+            
+        return jsonify({"report": report_text})
     except Exception as e:
-        print(f"GEMINI ERROR: {e}")
+        import traceback
+        traceback.print_exc() # This prints the EXACT error to Render logs
         return jsonify({"error": f"AI generation failed: {str(e)}"}), 500
         
 # ============================================
