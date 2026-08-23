@@ -222,7 +222,6 @@ def is_private_ip(ip):
 
 
 def lookup_country(ip):
-    """Free geo lookup. Returns country or None. Never crashes."""
     try:
         url = f"http://ip-api.com/json/{ip}"
         with urllib.request.urlopen(url, timeout=3) as r:
@@ -233,7 +232,6 @@ def lookup_country(ip):
 
 
 def check_hash_virustotal(file_hash):
-    """Check a hash on VirusTotal. Returns (malicious_count, total) or None. Never crashes."""
     if not VIRUSTOTAL_API_KEY:
         return None
     try:
@@ -342,7 +340,6 @@ def detect_external_geo(results, text):
 
 
 def detect_hashes(results, text):
-    """Extract file hashes (MD5 / SHA1 / SHA256) as IOCs and check VirusTotal."""
     hashes = {}
     for m in re.findall(r'\b[a-fA-F0-9]{32}\b', text):
         hashes[m] = 'MD5'
@@ -363,7 +360,6 @@ def detect_hashes(results, text):
                 f"Check these against VirusTotal / threat intel.",
                 "T1059 - Malicious file hashes present")
 
-    # Auto-check on VirusTotal if a key is configured (max 2 to respect rate limit)
     if VIRUSTOTAL_API_KEY:
         for h, t in list(hashes.items())[:2]:
             vt = check_hash_virustotal(h)
@@ -373,7 +369,6 @@ def detect_hashes(results, text):
                             "T1059 - Confirmed malicious file")
 
 def detect_beaconing(results, rows):
-    """Detect C2 beaconing patterns (RITA-style)."""
     if not rows:
         return
     score_col = get_col(rows[0].keys(), ['score'])
@@ -398,9 +393,7 @@ def detect_beaconing(results, rows):
 
 
 def analyze_json(content, results):
-    """Analyze JSON / JSON-Lines files (Suricata EVE, RITA JSON)."""
     rows = []
-    # JSON Lines (Suricata EVE)
     try:
         for line in content.strip().split('\n'):
             line = line.strip().rstrip(',')
@@ -411,7 +404,6 @@ def analyze_json(content, results):
                 rows.append(obj)
     except Exception:
         rows = []
-    # JSON array fallback
     if not rows:
         try:
             data = json.loads(content)
@@ -426,7 +418,6 @@ def analyze_json(content, results):
 
     results["summary"]["total_rows"] = len(rows)
 
-    # Suricata alert summary
     alerts = [r for r in rows if r.get('event_type') == 'alert']
     if alerts:
         sigs = set()
@@ -437,7 +428,6 @@ def analyze_json(content, results):
         add_finding(results, "HIGH", "IDS Alerts Present (Suricata)",
                     f"{len(alerts)} alerts. Signatures: {', '.join(list(sigs)[:3])}.", "T1059 - IDS alerts")
 
-    # Dominant source IP
     src_ips = Counter(str(r.get('src_ip', '')) for r in rows if r.get('src_ip'))
     if src_ips:
         top_ip, top_count = src_ips.most_common(1)[0]
@@ -446,7 +436,6 @@ def analyze_json(content, results):
             add_finding(results, "HIGH", "Dominant Source IP",
                         f"IP {top_ip} appears {top_count}/{len(rows)} events.", "T1595 - Active Scanning")
 
-    # Run all detectors
     detect_parent_child(results, rows)
     detect_ports(results, rows, content)
     detect_large_transfer(results, rows)
@@ -459,10 +448,12 @@ def analyze_json(content, results):
     if not results["findings"]:
         add_finding(results, "LOW", "No Immediate Threats Detected", "No obvious suspicious patterns.", "")
     return results
- def analyze_pcap(raw, results):
+
+
+def analyze_pcap(raw, results):
     """Parse a binary PCAP with dpkt and run detectors."""
     try:
-        import dpkt, socket, io
+        import dpkt, socket
     except ImportError:
         add_finding(results, "INFO", "PCAP support not installed",
                     "dpkt library missing on server.", "")
@@ -481,7 +472,7 @@ def analyze_json(content, results):
     ports = set()
     dns_names = []
     total = 0
-    MAX = 50000  # cap to stay fast on free hosting
+    MAX = 50000  
 
     for ts, buf in pcap:
         total += 1
@@ -493,7 +484,6 @@ def analyze_json(content, results):
             if not isinstance(ip, dpkt.ip.IP):
                 continue
             src = socket.inet_ntoa(ip.src)
-            dst = socket.inet_ntoa(ip.dst)
             ip_counter[src] += 1
             trans = ip.data
             if isinstance(trans, (dpkt.tcp.TCP, dpkt.udp.UDP)):
@@ -555,7 +545,6 @@ def analyze_csv(content, results):
     results["summary"]["total_rows"] = len(rows)
     results["summary"]["columns"] = list(rows[0].keys())
 
-    # Dominant IP
     ip_columns = [c for c in rows[0].keys() if 'ip' in c.lower() or 'src' in c.lower() or 'dst' in c.lower()]
     for col in ip_columns:
         ip_counts = Counter(row.get(col, '') for row in rows if row.get(col, ''))
@@ -567,13 +556,11 @@ def analyze_csv(content, results):
                             f"IP {top_ip} appears {top_count}/{len(rows)} events ({round(top_count / len(rows) * 100)}%).",
                             "T1595 - Active Scanning")
 
-    # Failed logins
     failed = sum(1 for row in rows if any('fail' in str(v).lower() or '4625' in str(v) for v in row.values()))
     if failed > 10:
         add_finding(results, "HIGH", "Multiple Failed Logins",
                     f"Found {failed} failed login events. Possible brute force.", "T1110 - Brute Force")
 
-    # Run the enhanced detectors
     detect_lotl(results, content)
     detect_parent_child(results, rows)
     detect_ports(results, rows, content)
@@ -596,7 +583,6 @@ def analyze_log(content, results):
     lines = content.strip().split('\n')
     results["summary"]["total_lines"] = len(lines)
 
-    # Dominant IP
     all_ips = re.findall(r'\b(?:\d{1,3}\.){3}\d{1,3}\b', content)
     if all_ips:
         top_ips = Counter(all_ips).most_common(5)
@@ -605,20 +591,17 @@ def analyze_log(content, results):
             add_finding(results, "HIGH", "Dominant IP Address",
                         f"IP {top_ips[0][0]} appears {top_ips[0][1]} times.", "T1595 - Active Scanning")
 
-    # Failed logins
     failed = [l for l in lines if 'fail' in l.lower() or 'invalid' in l.lower()]
     if len(failed) > 10:
         add_finding(results, "HIGH", "Multiple Failed Logins",
                     f"Found {len(failed)} failed login events.", "T1110 - Brute Force")
 
-    # Suspicious keywords
     for kw in ['malware', 'exploit', 'injection', 'backdoor', 'trojan', 'ransomware']:
         matches = [l for l in lines if kw in l.lower()]
         if matches:
             add_finding(results, "HIGH", f"Suspicious Keyword: {kw}",
                         f"Found {len(matches)} lines containing '{kw}'.", "T1059 - Command Interpreter")
 
-    # Run the enhanced detectors (text-based)
     detect_lotl(results, content)
     detect_ports(results, None, content)
     detect_dns(results, content)
