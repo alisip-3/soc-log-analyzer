@@ -24,7 +24,7 @@ def too_big(e):
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel("gemini-1.5-flash-latest")
+    model = genai.GenerativeModel("gemini-pro")
 else:
     model = None
 
@@ -154,15 +154,8 @@ RULES:
 - Write in markdown format.
 """
 
-    try:
-        safety_settings = {
-            'HARM_CATEGORY_HARASSMENT': 'BLOCK_NONE',
-            'HARM_CATEGORY_HATE_SPEECH': 'BLOCK_NONE',
-            'HARM_CATEGORY_SEXUALLY_EXPLICIT': 'BLOCK_NONE',
-            'HARM_CATEGORY_DANGEROUS_CONTENT': 'BLOCK_NONE',
-        }
-        
-        response = model.generate_content(prompt, safety_settings=safety_settings)
+    try: 
+        response = model.generate_content(prompt)
         
         try:
             report_text = response.text
