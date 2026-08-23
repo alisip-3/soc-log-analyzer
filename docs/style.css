@@ -405,3 +405,11 @@ input:focus, select:focus { outline: none; border-color: var(--cyan); }
 .gallery-item img { width: 100%; border-radius: 8px; }
 .gallery-item figcaption { color: var(--muted); font-size: 0.8rem; margin-top: 8px; }
 
+/* Privacy Notice */
+.privacy-notice {
+    margin-top: 15px;
+    font-size: 0.8rem;
+    color: var(--cyan);
+    letter-spacing: 1px;
+    opacity: 0.8;
+}
