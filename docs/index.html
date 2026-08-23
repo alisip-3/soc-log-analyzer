@@ -55,6 +55,7 @@
 
         <div class="glass-panel">
             <div class="upload-box" id="dropZone">
+                <p class="privacy-notice">🔒 <strong>Privacy First:</strong> Files are analyzed in RAM and immediately discarded. We never save your logs.</p>
                 <div class="upload-icon">📂</div>
                 <h3>Drop your log file here</h3>
                 <p>Supports: CSV, LOG, TXT, JSON, TSV, pcap </p>
@@ -160,10 +161,10 @@ Example:
             <div class="gallery" id="galleryGrid"></div>
         </div>
         
-        <div class="report-actions">
+     <div class="report-actions">
             <button class="btn btn-cyan" id="copyBtn">📋 Copy Report</button>
             <button class="btn btn-purple" id="downloadBtn">📥 Download Report</button>
-            <button class="btn btn-ghost" onclick="goBack()">🔄 Start New Report</button>
+            <button class="btn btn-ghost" onclick="resetAll()">🔄 Start New Investigation</button>
         </div>
 
     <footer class="footer">
