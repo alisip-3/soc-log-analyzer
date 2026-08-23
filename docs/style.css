@@ -342,19 +342,23 @@ input:focus, select:focus { outline: none; border-color: var(--cyan); }
 }
 .report-actions { display: flex; gap: 12px; }
 
-/* ============ FOOTER ============ */
+/* ============ FOOTER  ============ */
 .footer {
+    position: relative;
+    z-index: 10; /* Forces it above the glowing background orbs */
+    display: block !important; /* Prevents any code from hiding it */
     text-align: center;
-    padding: 35px;
-    color: var(--muted);
-    border-top: 1px solid var(--border);
-    margin-top: 60px;
+    padding: 50px 20px;
+    margin-top: 100px;
+    background: rgba(5, 8, 16, 0.95); /* Solid dark background so it's easy to read */
+    border-top: 2px solid var(--cyan);
+    color: #ffffff; /* Bright white text */
     letter-spacing: 1px;
 }
 .footer-name {
     color: var(--cyan);
     font-weight: 700;
-    text-shadow: 0 0 10px rgba(0,212,255,0.5);
+    text-shadow: 0 0 15px rgba(0,212,255,0.8);
 }
 
 /* ============ RESPONSIVE ============ */
