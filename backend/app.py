@@ -104,7 +104,7 @@ EVIDENCE SCREENSHOTS PROVIDED BY THE ANALYST:
 {screenshots_text}
 """
 
-    prompt = f"""You are a senior SOC analyst writing a professional Incident Response report.
+   prompt = f"""You are a senior defensive SOC analyst writing a professional Incident Response report for educational and defensive cybersecurity research purposes. This is a simulated/defensive analysis.
 
 Incident Name: {incident_name}
 Severity: {severity}
