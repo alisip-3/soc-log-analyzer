@@ -104,7 +104,7 @@ EVIDENCE SCREENSHOTS PROVIDED BY THE ANALYST:
 {screenshots_text}
 """
 
-   prompt = f"""You are a senior defensive SOC analyst writing a professional Incident Response report for educational and defensive cybersecurity research purposes. This is a simulated/defensive analysis.
+    prompt = f"""You are a senior defensive SOC analyst writing a professional Incident Response report for educational and defensive cybersecurity research purposes. This is a simulated/defensive analysis.
 
 Incident Name: {incident_name}
 Severity: {severity}
@@ -162,7 +162,6 @@ RULES:
         return jsonify({"report": response.text})
     except Exception as e:
         return jsonify({"error": f"AI generation failed: {str(e)}"}), 500
-
 
 # ============================================
 # ENHANCED ANALYSIS ENGINE
