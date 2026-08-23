@@ -99,10 +99,7 @@ def generate_report():
 
     screenshots_block = ""
     if screenshots_text:
-        screenshots_block = f"""
-EVIDENCE SCREENSHOTS PROVIDED BY THE ANALYST:
-{screenshots_text}
-"""
+        screenshots_block = f"\nEVIDENCE SCREENSHOTS PROVIDED BY THE ANALYST:\n{screenshots_text}\n"
 
     prompt = f"""You are a senior defensive SOC analyst writing a professional Incident Response report for educational and defensive cybersecurity research purposes. This is a simulated/defensive analysis.
 
@@ -157,24 +154,20 @@ RULES:
 - Write in markdown format.
 """
 
-     try:
-        # Tell Gemini to ignore safety filters for defensive cybersecurity research
-        safety_settings = [
-            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-        ]
-        
+    safety_settings = [
+        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+    ]
+
+    try:
         response = model.generate_content(prompt, safety_settings=safety_settings)
-        
-        # Check if Gemini blocked it silently
-        if not response.candidates:
-            return jsonify({"error": "Gemini blocked this request. Try using less aggressive wording."}), 500
-            
+        if not hasattr(response, 'text') or not response.text:
+            return jsonify({"error": "Gemini blocked the request due to safety filters. Try shorter findings."}), 500
         return jsonify({"report": response.text})
     except Exception as e:
-        print("GEMINI ERROR:", str(e))  # This will show up in Render logs if it still fails
+        print(f"GEMINI ERROR: {e}")
         return jsonify({"error": f"AI generation failed: {str(e)}"}), 500
         
 # ============================================
