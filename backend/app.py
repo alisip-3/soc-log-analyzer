@@ -86,7 +86,7 @@ def analyze_file():
 @app.route('/generate-report', methods=['POST'])
 def generate_report():
     if not GEMINI_API_KEY:
-        return jsonify({"error": "Gemini API key not configured"}), 500
+        return jsonify({"error": "Gemini API key not configured on server"}), 500
 
     data = request.get_json()
     if not data:
@@ -102,7 +102,7 @@ def generate_report():
     if screenshots_text:
         screenshots_block = f"\nEVIDENCE SCREENSHOTS PROVIDED BY THE ANALYST:\n{screenshots_text}\n"
 
-    prompt = f"""You are a senior defensive SOC analyst writing a professional Incident Response report for defensive cybersecurity purposes.
+    prompt = f"""You are a senior defensive SOC analyst writing an official Incident Response report for internal defensive analysis.
 
 Incident Name: {incident_name}
 Severity: {severity}
@@ -136,57 +136,46 @@ INCIDENT RESPONSE REPORT: {incident_name}
 
 8. POST-INCIDENT RECOMMENDATIONS
 
-FORMATTING RULES (VERY IMPORTANT):
+FORMATTING RULES:
 - Write in clean, readable plain text.
-- Do NOT use markdown symbols: no #, no **, no |, no backticks.
+- Do NOT use markdown headers (# or ##), bolding (**), or markdown tables.
 - Use UPPERCASE for section titles and put a line of dashes (----) under each title.
-- Be specific. Reference the actual IPs, ports, hashes and events from the findings.
+- Reference the actual IPs, ports, hashes, and log events from the findings.
 - Do NOT invent information that is not in the findings.
-- Use real MITRE ATT&CK technique IDs (e.g., T1566, T1078, T1021, T1110).
+- Map observed events to real MITRE ATT&CK technique IDs (e.g., T1566, T1078, T1021, T1110).
 """
 
-    # Models to try (newest to oldest)
-    models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-pro"]
+    # Use primary and fallback models supported by the current SDK
+    models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash"]
     last_error = None
 
     for model_name in models_to_try:
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
+            # Initialize client per request or use the global instance
+            genai_client = genai.Client(api_key=GEMINI_API_KEY)
             
-            payload = json.dumps({
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": 0.7, "maxOutputTokens": 8192}
-            }).encode('utf-8')
-            
-            req = urllib.request.Request(
-                url,
-                data=payload,
-                headers={"Content-Type": "application/json"},
-                method="POST"
+            response = genai_client.models.generate_content(
+                model=model_name,
+                contents=prompt,
             )
             
-            with urllib.request.urlopen(req, timeout=60) as response:
-                result = json.loads(response.read().decode('utf-8'))
-            
-            # Extract the text from the response
-            candidates = result.get("candidates", [])
-            if candidates:
-                parts = candidates[0].get("content", {}).get("parts", [])
-                if parts and "text" in parts[0]:
-                    report_text = parts[0]["text"]
-                    print(f"SUCCESS with model: {model_name}")
-                    return jsonify({"report": report_text})
-            
-            last_error = "No text in response"
-            print(f"Model {model_name}: empty response")
-            
+            if response and response.text:
+                print(f"SUCCESS with model: {model_name}")
+                return jsonify({"report": response.text})
+            else:
+                last_error = f"Model {model_name} returned empty text (possibly blocked by safety filters)."
+                print(last_error)
+                
         except Exception as e:
             last_error = str(e)
             print(f"Model {model_name} failed: {e}")
             continue
 
-    # If we get here, all models failed
-    return jsonify({"error": f"All models failed. Last error: {last_error}"}), 500
+    # Return detailed error message if all attempts fail
+    return jsonify({
+        "error": "Failed to generate report with Gemini API.",
+        "details": last_error
+    }), 500
 
 
 # ============================================
