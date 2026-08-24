@@ -35,9 +35,6 @@ VIRUSTOTAL_API_KEY = os.environ.get("VIRUSTOTAL_API_KEY", "")
 @app.route('/', methods=['GET'])
 def home():
     return jsonify({"status": "SOC Log Analyzer API is running!"})
-@app.route('/', methods=['GET'])
-def home():
-    return jsonify({"status": "SOC Log Analyzer API is running!"})
 
 
 @app.route('/debug-key', methods=['GET'])
@@ -165,13 +162,11 @@ FORMATTING RULES:
 - Map observed events to real MITRE ATT&CK technique IDs (e.g., T1566, T1078, T1021, T1110).
 """
 
-    # Use primary and fallback models supported by the current SDK
     models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash"]
     last_error = None
 
     for model_name in models_to_try:
         try:
-            # Initialize client per request or use the global instance
             genai_client = genai.Client(api_key=GEMINI_API_KEY)
             
             response = genai_client.models.generate_content(
@@ -191,7 +186,6 @@ FORMATTING RULES:
             print(f"Model {model_name} failed: {e}")
             continue
 
-    # Return detailed error message if all attempts fail
     return jsonify({
         "error": "Failed to generate report with Gemini API.",
         "details": last_error
