@@ -8,6 +8,7 @@ import json
 import urllib.request
 from collections import Counter
 from google import genai
+from google.genai import types
 
 app = Flask(__name__)
 CORS(app)
