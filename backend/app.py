@@ -35,7 +35,26 @@ VIRUSTOTAL_API_KEY = os.environ.get("VIRUSTOTAL_API_KEY", "")
 @app.route('/', methods=['GET'])
 def home():
     return jsonify({"status": "SOC Log Analyzer API is running!"})
+@app.route('/', methods=['GET'])
+def home():
+    return jsonify({"status": "SOC Log Analyzer API is running!"})
 
+
+@app.route('/debug-key', methods=['GET'])
+def debug_key():
+    key = os.environ.get("GEMINI_API_KEY", "")
+    if not key:
+        return jsonify({
+            "status": "error",
+            "message": "GEMINI_API_KEY is MISSING in Render Environment Variables!"
+        }), 500
+    
+    masked_key = f"{key[:4]}...{key[-4:]}" if len(key) > 8 else "INVALID_LENGTH"
+    return jsonify({
+        "status": "success",
+        "message": "GEMINI_API_KEY is configured correctly!",
+        "key_preview": masked_key
+    }), 200
 
 # ============================================
 # ENDPOINT 1: Analyze uploaded file
