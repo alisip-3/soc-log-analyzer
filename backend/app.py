@@ -6,9 +6,8 @@ import re
 import os
 import json
 import urllib.request
+import urllib.error
 from collections import Counter
-from google import genai
-from google.genai import types
 
 app = Flask(__name__)
 CORS(app)
@@ -21,37 +20,36 @@ def too_big(e):
 
 
 # ============================================
-# API CONFIGURATION 
+# API CONFIGURATION
 # ============================================
+# We call the Gemini REST API directly (urllib), so no SDK client is needed here.
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-if GEMINI_API_KEY:
-    client = genai.Client(api_key=GEMINI_API_KEY)
-else:
-    client = None
-
 VIRUSTOTAL_API_KEY = os.environ.get("VIRUSTOTAL_API_KEY", "")
+
+# Models to try, newest/most-capable first. Google retires Gemini models on a
+# rolling schedule (gemini-2.0-flash was shut down June 1, 2026, gemini-1.5-flash
+# and gemini-pro are already gone) — check
+# https://ai.google.dev/gemini-api/docs/deprecations before deploying, and update
+# this list if you start seeing 404s again.
+GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"]
+
+# The default safety thresholds can block legitimate defensive security writing
+# (reports that name malware, exploits, brute force, etc.). Relax them here.
+GEMINI_SAFETY_SETTINGS = [
+    {"category": c, "threshold": "BLOCK_ONLY_HIGH"}
+    for c in [
+        "HARM_CATEGORY_HARASSMENT",
+        "HARM_CATEGORY_HATE_SPEECH",
+        "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+        "HARM_CATEGORY_DANGEROUS_CONTENT",
+    ]
+]
 
 
 @app.route('/', methods=['GET'])
 def home():
     return jsonify({"status": "SOC Log Analyzer API is running!"})
 
-
-@app.route('/debug-key', methods=['GET'])
-def debug_key():
-    key = os.environ.get("GEMINI_API_KEY", "")
-    if not key:
-        return jsonify({
-            "status": "error",
-            "message": "GEMINI_API_KEY is MISSING in Render Environment Variables!"
-        }), 500
-    
-    masked_key = f"{key[:4]}...{key[-4:]}" if len(key) > 8 else "INVALID_LENGTH"
-    return jsonify({
-        "status": "success",
-        "message": "GEMINI_API_KEY is configured correctly!",
-        "key_preview": masked_key
-    }), 200
 
 # ============================================
 # ENDPOINT 1: Analyze uploaded file
@@ -93,17 +91,18 @@ def analyze_file():
 
         return jsonify(results)
     except Exception as e:
+        print(f"/analyze failed: {type(e).__name__}: {e}")
         return jsonify({"error": str(e)}), 500
 
 
 # ============================================
-# ENDPOINT 2: Generate AI Report 
+# ENDPOINT 2: Generate AI Report
 # ============================================
 
 @app.route('/generate-report', methods=['POST'])
 def generate_report():
     if not GEMINI_API_KEY:
-        return jsonify({"error": "Gemini API key not configured on server"}), 500
+        return jsonify({"error": "Gemini API key not configured"}), 500
 
     data = request.get_json()
     if not data:
@@ -119,7 +118,7 @@ def generate_report():
     if screenshots_text:
         screenshots_block = f"\nEVIDENCE SCREENSHOTS PROVIDED BY THE ANALYST:\n{screenshots_text}\n"
 
-    prompt = f"""You are a senior defensive SOC analyst writing an official Incident Response report for internal defensive analysis.
+    prompt = f"""You are a senior defensive SOC analyst writing a professional Incident Response report for defensive cybersecurity purposes.
 
 Incident Name: {incident_name}
 Severity: {severity}
@@ -153,43 +152,74 @@ INCIDENT RESPONSE REPORT: {incident_name}
 
 8. POST-INCIDENT RECOMMENDATIONS
 
-FORMATTING RULES:
+FORMATTING RULES (VERY IMPORTANT):
 - Write in clean, readable plain text.
-- Do NOT use markdown headers (# or ##), bolding (**), or markdown tables.
+- Do NOT use markdown symbols: no #, no **, no |, no backticks.
 - Use UPPERCASE for section titles and put a line of dashes (----) under each title.
-- Reference the actual IPs, ports, hashes, and log events from the findings.
+- Be specific. Reference the actual IPs, ports, hashes and events from the findings.
 - Do NOT invent information that is not in the findings.
-- Map observed events to real MITRE ATT&CK technique IDs (e.g., T1566, T1078, T1021, T1110).
+- Use real MITRE ATT&CK technique IDs (e.g., T1566, T1078, T1021, T1110).
 """
 
-    models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash"]
     last_error = None
 
-    for model_name in models_to_try:
+    for model_name in GEMINI_MODELS:
         try:
-            genai_client = genai.Client(api_key=GEMINI_API_KEY)
-            
-            response = genai_client.models.generate_content(
-                model=model_name,
-                contents=prompt,
+            url = (
+                f"https://generativelanguage.googleapis.com/v1beta/models/"
+                f"{model_name}:generateContent?key={GEMINI_API_KEY}"
             )
-            
-            if response and response.text:
-                print(f"SUCCESS with model: {model_name}")
-                return jsonify({"report": response.text})
-            else:
-                last_error = f"Model {model_name} returned empty text (possibly blocked by safety filters)."
-                print(last_error)
-                
-        except Exception as e:
-            last_error = str(e)
-            print(f"Model {model_name} failed: {e}")
-            continue
 
-    return jsonify({
-        "error": "Failed to generate report with Gemini API.",
-        "details": last_error
-    }), 500
+            payload = json.dumps({
+                "contents": [{"parts": [{"text": prompt}]}],
+                "safetySettings": GEMINI_SAFETY_SETTINGS,
+                "generationConfig": {"temperature": 0.7, "maxOutputTokens": 8192}
+            }).encode('utf-8')
+
+            req = urllib.request.Request(
+                url,
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+
+            # Give this real budget to run — must stay comfortably under the
+            # gunicorn worker --timeout set in render.yaml (currently 120s).
+            with urllib.request.urlopen(req, timeout=90) as response:
+                result = json.loads(response.read().decode('utf-8'))
+
+            candidates = result.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                if parts and "text" in parts[0]:
+                    report_text = parts[0]["text"]
+                    print(f"SUCCESS with model: {model_name}")
+                    return jsonify({"report": report_text})
+
+                # Model responded with a candidate but no usable text —
+                # usually a safety block or a MAX_TOKENS cutoff.
+                finish_reason = candidates[0].get("finishReason", "UNKNOWN")
+                last_error = f"{model_name}: empty content, finishReason={finish_reason}"
+                print(last_error)
+                continue
+
+            # No candidates at all — check for an explicit prompt-level block.
+            block_reason = result.get("promptFeedback", {}).get("blockReason")
+            last_error = f"{model_name}: no candidates, blockReason={block_reason}"
+            print(last_error)
+
+        except urllib.error.HTTPError as e:
+            body = e.read().decode('utf-8', errors='ignore')
+            last_error = f"{model_name}: HTTP {e.code} - {body[:500]}"
+            print(last_error)
+        except urllib.error.URLError as e:
+            last_error = f"{model_name}: network error - {e.reason}"
+            print(last_error)
+        except Exception as e:
+            last_error = f"{model_name}: {type(e).__name__}: {e}"
+            print(last_error)
+
+    return jsonify({"error": f"All models failed. Last error: {last_error}"}), 500
 
 
 # ============================================
