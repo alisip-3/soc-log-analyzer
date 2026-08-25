@@ -487,7 +487,6 @@ document.getElementById('downloadPdfBtn').addEventListener('click', async () => 
     btn.disabled = true;
 
     try {
-        // Dynamically load jsPDF if not already loaded
         if (!window.jspdf) {
             await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
         }
@@ -503,7 +502,15 @@ document.getElementById('downloadPdfBtn').addEventListener('click', async () => 
 
         const date = new Date().toISOString().slice(0, 10);
 
-        // Helper: check if we need a new page
+        // Strip markdown formatting
+        function cleanText(text) {
+            return text
+                .replace(/\*\*(.+?)\*\*/g, '$1')  // Remove **bold**
+                .replace(/\*(.+?)\*/g, '$1')       // Remove *italic*
+                .replace(/^#{1,3}\s+/gm, '')       // Remove heading markers
+                .replace(/^[-•]\s+/gm, '');        // Remove bullet markers
+        }
+
         function checkPageBreak(neededHeight) {
             if (yPos + neededHeight > pageHeight - margin) {
                 doc.addPage();
@@ -511,21 +518,19 @@ document.getElementById('downloadPdfBtn').addEventListener('click', async () => 
             }
         }
 
-        // Helper: add text with word wrap
         function addText(text, fontSize, isBold = false, color = [0, 0, 0]) {
+            const clean = cleanText(text);
             doc.setFontSize(fontSize);
             doc.setFont('helvetica', isBold ? 'bold' : 'normal');
             doc.setTextColor(color[0], color[1], color[2]);
 
-            const lines = doc.splitTextToSize(text, contentWidth);
-            
+            const lines = doc.splitTextToSize(clean, contentWidth);
             lines.forEach(line => {
                 checkPageBreak(fontSize * 0.4);
                 doc.text(line, margin, yPos);
                 yPos += fontSize * 0.4;
             });
-            
-            yPos += 2; // spacing after paragraph
+            yPos += 2;
         }
 
         // Header
@@ -557,18 +562,18 @@ document.getElementById('downloadPdfBtn').addEventListener('click', async () => 
             doc.setFontSize(12);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(0, 92, 173);
-            doc.text('MITRE ATT&CK Kill Chain', margin, yPos);
+            doc.text('MITRE ATT&CK Techniques Detected', margin, yPos);
             yPos += 6;
 
-            doc.setFontSize(9);
+            doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
+            doc.setTextColor(0, 0, 0);
             
-            const tacticList = Array.from(tactics).join(' → ');
-            const wrappedTactics = doc.splitTextToSize(tacticList, contentWidth);
-            wrappedTactics.forEach(line => {
-                checkPageBreak(5);
-                doc.text(line, margin, yPos);
-                yPos += 5;
+            const tacticArray = Array.from(tactics);
+            tacticArray.forEach((tactic, idx) => {
+                checkPageBreak(6);
+                doc.text(`${idx + 1}. ${tactic}`, margin + 5, yPos);
+                yPos += 6;
             });
             yPos += 8;
         }
@@ -603,13 +608,20 @@ document.getElementById('downloadPdfBtn').addEventListener('click', async () => 
                 doc.setFontSize(10);
                 doc.setTextColor(0, 0, 0);
                 
-                const bulletLines = doc.splitTextToSize('• ' + bulletText, contentWidth - 5);
+                const cleanBullet = cleanText(bulletText);
+                const bulletLines = doc.splitTextToSize('• ' + cleanBullet, contentWidth - 5);
                 bulletLines.forEach((bl, idx) => {
                     checkPageBreak(5);
                     doc.text(bl, margin + (idx === 0 ? 0 : 5), yPos);
                     yPos += 5;
                 });
                 yPos += 2;
+            }
+            // Numbered lists (like "1. HEADER & METADATA")
+            else if (line.match(/^\d+\.\s+/)) {
+                checkPageBreak(10);
+                yPos += 3;
+                addText(line, 12, true, [0, 92, 173]);
             }
             // Regular paragraphs
             else {
@@ -630,7 +642,6 @@ document.getElementById('downloadPdfBtn').addEventListener('click', async () => 
             for (let i = 0; i < activeShots.length; i++) {
                 const shot = activeShots[i];
                 
-                // Add caption
                 checkPageBreak(10);
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'bold');
@@ -639,7 +650,6 @@ document.getElementById('downloadPdfBtn').addEventListener('click', async () => 
                 doc.text(caption, margin, yPos);
                 yPos += 6;
 
-                // Add image
                 try {
                     const imgData = shot.dataUrl;
                     const imgProps = doc.getImageProperties(imgData);
@@ -649,7 +659,6 @@ document.getElementById('downloadPdfBtn').addEventListener('click', async () => 
                     let imgWidth = imgProps.width;
                     let imgHeight = imgProps.height;
                     
-                    // Scale to fit
                     const ratio = Math.min(maxWidth / imgWidth, maxHeight / imgHeight);
                     imgWidth *= ratio;
                     imgHeight *= ratio;
@@ -663,12 +672,11 @@ document.getElementById('downloadPdfBtn').addEventListener('click', async () => 
             }
         }
 
-        // Footer on last page
+        // Footer
         doc.setFontSize(8);
         doc.setTextColor(150, 150, 150);
         doc.text('Generated by SOC Analyzer — soc-log-analyzer-rhld.onrender.com', margin, pageHeight - 10);
 
-        // Save
         doc.save(`IR_Report_${date}.pdf`);
 
     } catch (e) {
@@ -680,7 +688,6 @@ document.getElementById('downloadPdfBtn').addEventListener('click', async () => 
     }
 });
 
-// Helper to load external scripts
 function loadScript(src) {
     return new Promise((resolve, reject) => {
         const script = document.createElement('script');
