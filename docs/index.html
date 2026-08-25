@@ -6,8 +6,9 @@
     <title>SOC Analyzer | AI-Powered IR Reports</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=5">
      <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 
@@ -169,7 +170,8 @@ Example:
         
      <div class="report-actions">
             <button class="btn btn-cyan" id="copyBtn">📋 Copy Report</button>
-            <button class="btn btn-purple" id="downloadBtn">📥 Download Report</button>
+            <button class="btn btn-purple" id="downloadPdfBtn">📥 Download PDF</button>
+            <button class="btn btn-outline" id="downloadTxtBtn">📄 Download .txt</button>
             <button class="btn btn-ghost" onclick="resetAll()">🔄 Start New Investigation</button>
         </div>
     </section>
