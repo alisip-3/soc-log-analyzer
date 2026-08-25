@@ -130,32 +130,33 @@ ADDITIONAL ANALYST NOTES:
 {additional_notes}
 {screenshots_block}
 
-Write a complete, professional Incident Response report with EXACTLY these sections:
+Write a complete, professional Incident Response report with EXACTLY these sections, using Markdown headers as shown:
 
-INCIDENT RESPONSE REPORT: {incident_name}
+# INCIDENT RESPONSE REPORT: {incident_name}
 
-1. HEADER & METADATA
+## 1. HEADER & METADATA
 (Incident ID, Severity, Status, Analyst, Date)
 
-2. EXECUTIVE SUMMARY
+## 2. EXECUTIVE SUMMARY
 
-3. MITRE ATT&CK KILL CHAIN MAPPING
-(Write one line per technique, like: Initial Access: T1566 (Phishing) - Evidence: ...)
+## 3. MITRE ATT&CK KILL CHAIN MAPPING
+Write ONE bullet per technique, in EXACTLY this format (this is parsed by the frontend, so keep it strict):
+- **Tactic Name**: T#### (Technique Name) — Evidence: short evidence description
 
-4. INCIDENT TIMELINE
+## 4. INCIDENT TIMELINE
 
-5. TECHNICAL ANALYSIS
+## 5. TECHNICAL ANALYSIS
 
-6. FORENSIC EVIDENCE & SCREENSHOTS
+## 6. FORENSIC EVIDENCE & SCREENSHOTS
 
-7. CONTAINMENT, ERADICATION & RECOVERY
+## 7. CONTAINMENT, ERADICATION & RECOVERY
 
-8. POST-INCIDENT RECOMMENDATIONS
+## 8. POST-INCIDENT RECOMMENDATIONS
 
 FORMATTING RULES (VERY IMPORTANT):
-- Write in clean, readable plain text.
-- Do NOT use markdown symbols: no #, no **, no |, no backticks.
-- Use UPPERCASE for section titles and put a line of dashes (----) under each title.
+- Use standard Markdown: "## " for each of the 8 section titles above, "- " for bullet lists (timeline events, evidence items, recommendations).
+- Use "**bold**" around key identifiers: IPs, ports, domains, file hashes, and MITRE technique IDs.
+- Do NOT use tables, backticks, or any formatting beyond headers/bold/bullets.
 - Be specific. Reference the actual IPs, ports, hashes and events from the findings.
 - Do NOT invent information that is not in the findings.
 - Use real MITRE ATT&CK technique IDs (e.g., T1566, T1078, T1021, T1110).
