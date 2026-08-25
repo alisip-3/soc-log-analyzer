@@ -1,5 +1,4 @@
 # 🛡️ SOC Log Analyzer
-
 **Turn raw logs into professional Incident Response reports — automatically.**
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue?style=flat-square&logo=python)
@@ -7,118 +6,52 @@
 ![AI](https://img.shields.io/badge/AI-Google%20Gemini-orange?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Live-brightgreen?style=flat-square)
 
----
+SOC analysts spend hours parsing logs and formatting documentation. I built this full-stack tool to automate the heavy lifting, allowing analysts to focus on hunting threats while the AI handles the reporting.
 
-## 👋 Hi, I'm Alisi!
-
-I'm a cybersecurity student trying to break into a SOC Analyst role. I built this project because I wanted to show **real working code**, not just certificates.
-
-When I was studying, I kept reading about how analysts spend hours parsing logs and writing reports. I thought: *"What if a tool could do the heavy lifting, but still give the analyst full control?"*
-
-This is my answer. 🚀
+🌐 **Try it live:** [https://alisip-3.github.io/soc-log-analyzer/](https://alisip-3.github.io/soc-log-analyzer/)
 
 ---
 
-## 🌐 Try It Live
+## 🖼️ Real-World Test (AgentTesla Malware)
 
-👉 **[https://alisip-3.github.io/soc-log-analyzer/](https://alisip-3.github.io/soc-log-analyzer/)**
+To prove this tool works on actual threats and not just synthetic data, I ran the analyzer against a **real AgentTesla malware infection** (PCAP sourced from Malware-Traffic-Analysis.net). 
 
-No install needed. Just open it, upload a file, and watch it work.
+The engine successfully identified the C2 beaconing, suspicious ports, and external connections, and generated a full, professional PDF report.
 
----
-
-## 🖼️ See It In Action
-
-I tested it on a **real AgentTesla malware infection** (PCAP from Malware-Traffic-Analysis.net) to prove it works on actual attacks.
-
-### 1️⃣ Home Screen
-![Home](docs/screenshots/01-home.png)
-
-### 2️⃣ Upload a PCAP File
-![Upload](docs/screenshots/02-pcap-upload.png)
-
-### 3️⃣ Automatic Threat Detection
-![Findings](docs/screenshots/03-pcap-findings.png)
-*It found suspicious ports, external C2 connections, and malware indicators.*
-
-### 4️⃣ AI Writes the Report
-![Report](docs/screenshots/04-pcap-report.png)
-*Gemini AI writes a full incident response report with MITRE ATT&CK mapping.*
-
-### 5️⃣ Evidence Gallery
-![Gallery](docs/screenshots/05-pcap-gallery.png)
-*Screenshots get attached to the report as evidence.*
+👉 **[View the full test results, screenshots, and the AI-generated PDF report here](./pcap_full_test/)**
 
 ---
 
-## ✨ What It Does
+## ✨ Core Features
 
-**Two ways to use it:**
-
-| Mode | What it does |
-| :--- | :--- |
-| 📁 **Upload & Analyze** | Drop a log file (PCAP, CSV, JSON, TXT) → instant threat detection |
-| ✍️ **Write Findings** | Already investigated? Type your findings → generate a report |
-
-**Automatic detection:**
-- 🔴 Brute force attacks (failed logins)
-- 🔴 Living-off-the-Land (PowerShell, certutil)
-- 🟡 Suspicious ports (Metasploit, RDP, Telnet)
-- 🟡 C2 beaconing patterns
-- 🟡 Malware hashes → **checks VirusTotal**
-- 🌐 External connections to suspicious countries
-
-**AI report includes:**
-- Executive summary for management
-- MITRE ATT&CK kill chain mapping
-- Technical analysis with IOCs
-- Containment & recovery steps
-- Evidence screenshots attached
+* **Two Workflows:** Upload raw logs (PCAP, CSV, JSON, TXT) for instant analysis, or upload your own Notepad investigation files.
+* **Automated Threat Detection:** Flags brute force, LotL techniques (PowerShell/certutil), suspicious ports, and C2 beaconing.
+* **Threat Intel Integration:** Automatically checks extracted file hashes against **VirusTotal** to confirm known malware.
+* **AI Report Generation:** Uses Google Gemini to write a structured IR report, complete with MITRE ATT&CK kill-chain mapping.
+* **Evidence Handling:** Attach screenshots to findings and export everything as a clean PDF or ZIP package.
 
 ---
 
-## 🛠️ Tech Stack
+## 📂 Try It Yourself
 
-| Layer | Technology |
-| :--- | :--- |
-| **Frontend** | HTML, CSS, JavaScript (GitHub Pages) |
-| **Backend** | Python + Flask (Render) |
-| **AI** | Google Gemini API |
-| **Threat Intel** | VirusTotal API |
-| **Log Parsing** | Custom Python + `dpkt` for PCAP |
+Want to test the detection engine? I've included a folder of realistic, noisy log files (Splunk exports, Suricata JSON, Zeek logs, and Linux auth logs) with hidden attacks buried inside the normal traffic. 
+
+👉 **[Download the sample logs and test them on the live site](./sample_logs/)**
 
 ---
 
-## 📂 Test Files (Try These!)
+## 🤔 Key Engineering Takeaways
 
-**`sample_logs/`** — 5 realistic files I created, each triggers different detectors:
-- `splunk_export.csv` — Splunk logs with embedded attack
-- `suricata_eve.json` — IDS alerts
-- `zeek_conn.log` — network connections
-- `rita_beacons.csv` — C2 beaconing
-- `linux_auth.log` — SSH brute force
-
-**`demo/`** — my full worked example:
-- The real AgentTesla PCAP I analyzed
-- The AI-generated PDF report
-- Screenshots of the process
-
----
-
-## 🤔 What I Learned
-
-- Parsing real log formats (CSV, JSON, PCAP)
-- Real threat detection patterns, not just theory
-- Integrating external APIs (Gemini, VirusTotal)
-- Deploying a full-stack app to production
-- Debugging real production issues (timeouts, CORS, API limits)
+Building this project pushed me to solve real-world production challenges:
+* Parsing diverse, unstructured log formats natively in Python.
+* Integrating external REST APIs (Gemini, VirusTotal) with proper error handling and rate-limit management.
+* Managing state and rendering dynamic UI elements in vanilla JavaScript.
+* Deploying a decoupled architecture (GitHub Pages frontend + Render backend) and handling CORS and API timeouts in a free-tier environment.
 
 ---
 
 <div align="center">
 
-**Built by Alisi Pinhasov** · Powered by Python + Google Gemini AI
-
-*P.S. — AI reports take ~60s on free hosting. Threat detection is instant though!* ⚡
+**Built by Alisi Pinhasov** · Powered by Python, Flask, and Google Gemini AI
 
 </div>
