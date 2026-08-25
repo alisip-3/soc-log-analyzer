@@ -1,4 +1,3 @@
-
 const API_URL = "https://soc-log-analyzer-rhld.onrender.com";
 
 // Screenshot stores for each mode
@@ -7,6 +6,128 @@ let shots2 = [];
 let activeShots = [];
 let analysisFindings = [];
 let selectedFile = null;
+let lastReportRaw = ''; // raw markdown text from the AI, kept for copy/download
+
+// ============================================
+// MITRE ATT&CK kill-chain visual
+// ============================================
+const ATTACK_TACTICS = [
+    "Reconnaissance", "Resource Development", "Initial Access", "Execution",
+    "Persistence", "Privilege Escalation", "Defense Evasion", "Credential Access",
+    "Discovery", "Lateral Movement", "Collection", "Command and Control",
+    "Exfiltration", "Impact"
+];
+
+// Maps technique IDs (as used by the backend detectors / AI prompt) to their tactic.
+const MITRE_TECHNIQUE_TACTIC = {
+    "T1595": "Reconnaissance",
+    "T1583": "Resource Development",
+    "T1566": "Initial Access",
+    "T1204": "Execution",
+    "T1204.002": "Execution",
+    "T1059": "Execution",
+    "T1059.001": "Execution",
+    "T1047": "Execution",
+    "T1105": "Command and Control",
+    "T1140": "Defense Evasion",
+    "T1197": "Defense Evasion",
+    "T1218": "Defense Evasion",
+    "T1218.005": "Defense Evasion",
+    "T1218.010": "Defense Evasion",
+    "T1218.011": "Defense Evasion",
+    "T1490": "Impact",
+    "T1136": "Persistence",
+    "T1033": "Discovery",
+    "T1482": "Discovery",
+    "T1571": "Command and Control",
+    "T1071": "Command and Control",
+    "T1071.001": "Command and Control",
+    "T1071.004": "Command and Control",
+    "T1048": "Exfiltration",
+    "T1110": "Credential Access"
+};
+
+function extractTacticsFromText(text) {
+    const ids = text.match(/T\d{4}(?:\.\d{3})?/g) || [];
+    const tactics = new Set();
+    ids.forEach(id => {
+        const tactic = MITRE_TECHNIQUE_TACTIC[id] || MITRE_TECHNIQUE_TACTIC[id.split('.')[0]];
+        if (tactic) tactics.add(tactic);
+    });
+    return tactics;
+}
+
+function renderMitreChain(reportText) {
+    const wrap = document.getElementById('mitreChainWrap');
+    const chain = document.getElementById('mitreChain');
+    const matched = extractTacticsFromText(reportText || '');
+
+    if (matched.size === 0) {
+        wrap.style.display = 'none';
+        return;
+    }
+
+    wrap.style.display = 'block';
+    chain.innerHTML = ATTACK_TACTICS.map((tactic, i) => {
+        const active = matched.has(tactic);
+        const arrow = i < ATTACK_TACTICS.length - 1 ? '<span class="mitre-arrow">→</span>' : '';
+        return `<div class="mitre-step ${active ? 'active' : ''}">${tactic}</div>${arrow}`;
+    }).join('');
+}
+
+// ============================================
+// Minimal Markdown -> HTML renderer (no external libs)
+// Supports: ## / ### headers, **bold**, "- " bullet lists, paragraphs.
+// ============================================
+function renderMarkdown(md) {
+    if (!md) return '';
+
+    const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const lines = md.split('\n');
+    let html = '';
+    let inList = false;
+
+    for (let rawLine of lines) {
+        const line = escape(rawLine).trim();
+
+        if (line === '') {
+            if (inList) { html += '</ul>'; inList = false; }
+            continue;
+        }
+
+        let m;
+        if ((m = line.match(/^# (.*)/))) {
+            if (inList) { html += '</ul>'; inList = false; }
+            html += `<h1>${inlineFormat(m[1])}</h1>`;
+        } else if ((m = line.match(/^## (.*)/))) {
+            if (inList) { html += '</ul>'; inList = false; }
+            html += `<h2>${inlineFormat(m[1])}</h2>`;
+        } else if ((m = line.match(/^### (.*)/))) {
+            if (inList) { html += '</ul>'; inList = false; }
+            html += `<h3>${inlineFormat(m[1])}</h3>`;
+        } else if ((m = line.match(/^-\s+(.*)/))) {
+            if (!inList) { html += '<ul>'; inList = true; }
+            html += `<li>${inlineFormat(m[1])}</li>`;
+        } else {
+            if (inList) { html += '</ul>'; inList = false; }
+            html += `<p>${inlineFormat(line)}</p>`;
+        }
+    }
+    if (inList) html += '</ul>';
+    return html;
+}
+
+function inlineFormat(text) {
+    return text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+}
+
+// Strips markdown symbols for plain-text copy/download.
+function stripMarkdownSymbols(md) {
+    return (md || '')
+        .replace(/^#{1,3}\s+/gm, '')
+        .replace(/\*\*(.+?)\*\*/g, '$1')
+        .replace(/^-\s+/gm, '• ');
+}
 
 // ============================================
 // Mode Selection
@@ -35,7 +156,7 @@ function resetAll() {
     document.getElementById('analysisResults').style.display = 'none';
     document.getElementById('additionalNotes').value = '';
     document.getElementById('incidentName1').value = '';
-    
+
     // Clear Mode 2 state
     document.getElementById('incidentName2').value = '';
     document.getElementById('findingsText').value = '';
@@ -47,12 +168,14 @@ function resetAll() {
     document.getElementById('shotsPreview1').innerHTML = '';
     document.getElementById('shotsPreview2').innerHTML = '';
 
+    lastReportRaw = '';
+
     // Hide everything and show home
     document.getElementById('reportSection').style.display = 'none';
     document.getElementById('uploadSection').style.display = 'none';
     document.getElementById('writeSection').style.display = 'none';
     document.getElementById('modeSelection').style.display = 'block';
-    
+
     window.scrollTo(0, 0); // Scroll to top
 }
 
@@ -291,10 +414,15 @@ async function generateReport(findingsText, incidentName, severity, additionalNo
             })
         });
 
-        if (!response.ok) throw new Error(`Server error: ${response.status}`);
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || `Server error: ${response.status}`);
+        }
         const data = await response.json();
 
-        document.getElementById('reportContent').textContent = data.report;
+        lastReportRaw = data.report;
+        document.getElementById('reportContent').innerHTML = renderMarkdown(data.report);
+        renderMitreChain(data.report);
         renderGallery(activeShots);
         document.getElementById('reportSection').style.display = 'block';
         document.getElementById('reportSection').scrollIntoView({ behavior: 'smooth' });
@@ -330,7 +458,7 @@ function renderGallery(store) {
 // Copy Report
 // ============================================
 document.getElementById('copyBtn').addEventListener('click', () => {
-    const text = document.getElementById('reportContent').textContent;
+    const text = stripMarkdownSymbols(lastReportRaw);
     navigator.clipboard.writeText(text).then(() => {
         document.getElementById('copyBtn').textContent = '✅ Copied!';
         setTimeout(() => { document.getElementById('copyBtn').textContent = '📋 Copy Report'; }, 2000);
@@ -338,16 +466,16 @@ document.getElementById('copyBtn').addEventListener('click', () => {
 });
 
 // ============================================
-// Download Report (ZIP with screenshots, or .md if none)
+// Download Report (ZIP with screenshots, or .txt if none)
 // ============================================
 document.getElementById('downloadBtn').addEventListener('click', async () => {
-    const text = document.getElementById('reportContent').textContent;
+    const text = stripMarkdownSymbols(lastReportRaw);
     const date = new Date().toISOString().slice(0, 10);
 
     if (activeShots && activeShots.length > 0) {
         // --- WITH SCREENSHOTS: build a ZIP ---
         const zip = new JSZip();
-        zip.file("IR_Report.md", text);
+        zip.file("IR_Report.txt", text);
 
         activeShots.forEach((shot, i) => {
             // dataUrl looks like: data:image/png;base64,XXXX
@@ -359,19 +487,19 @@ document.getElementById('downloadBtn').addEventListener('click', async () => {
         });
 
         // Small readme listing the captions
-        let readme = "# Evidence Screenshots\n\n";
+        let readme = "Evidence Screenshots\n\n";
         activeShots.forEach((s, i) => {
             readme += `- Screenshot #${i + 1}: ${s.caption || '(no caption)'}\n`;
         });
-        zip.file("screenshots_readme.md", readme);
+        zip.file("screenshots_readme.txt", readme);
 
         const blob = await zip.generateAsync({ type: "blob" });
         triggerDownload(blob, `IR_Report_${date}.zip`);
 
     } else {
-        // --- NO SCREENSHOTS: just the markdown file ---
-        const blob = new Blob([text], { type: 'text/markdown' });
-        triggerDownload(blob, `IR_Report_${date}.md`);
+        // --- NO SCREENSHOTS: just the plain text file ---
+        const blob = new Blob([text], { type: 'text/plain' });
+        triggerDownload(blob, `IR_Report_${date}.txt`);
     }
 
     const btn = document.getElementById('downloadBtn');
@@ -389,5 +517,3 @@ function triggerDownload(blob, filename) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 }
-
-    
