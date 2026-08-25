@@ -418,7 +418,6 @@ input:focus, select:focus { outline: none; border-color: var(--cyan); }
     opacity: 0.8;
 }
 
-/* ============ ADD TO THE END OF style.css ============ */
 
 /* ---- Rendered report typography (headings now come from real Markdown) ---- */
 .report-content h1 {
@@ -492,7 +491,6 @@ input:focus, select:focus { outline: none; border-color: var(--cyan); }
     .mitre-step { font-size: 0.68rem; padding: 6px 9px; }
 }
 
-/* ============ ADD TO THE END OF style.css ============ */
 
 /* ---- Rendered report typography (in-app, dark theme) ---- */
 .report-content h1 {
@@ -577,14 +575,14 @@ input:focus, select:focus { outline: none; border-color: var(--cyan); }
    for html2pdf.js to render — it never appears in the UI.
    ====================================================== */
 .pdf-export {
-    position: fixed;
-    top: -99999px;
-    left: -99999px;
     width: 780px;
     background: #ffffff;
     color: #1a1a1a;
     font-family: 'Rajdhani', Arial, sans-serif;
     padding: 10px;
+    /* Positioning (fixed, z-index: -9999) is set by script.js at creation
+       time — keep it that way rather than off-screen coordinates, or
+       html2canvas will silently capture a blank page. */
 }
 
 .pdf-header {
