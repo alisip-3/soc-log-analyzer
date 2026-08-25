@@ -491,3 +491,181 @@ input:focus, select:focus { outline: none; border-color: var(--cyan); }
 @media (max-width: 700px) {
     .mitre-step { font-size: 0.68rem; padding: 6px 9px; }
 }
+
+/* ============ ADD TO THE END OF style.css ============ */
+
+/* ---- Rendered report typography (in-app, dark theme) ---- */
+.report-content h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.3rem;
+    color: var(--cyan);
+    text-shadow: 0 0 12px rgba(0,212,255,0.5);
+    margin: 0 0 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+.report-content h2 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.05rem;
+    letter-spacing: 1px;
+    color: var(--cyan);
+    margin: 28px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+}
+.report-content h2:first-child { margin-top: 0; }
+.report-content h3 {
+    font-size: 0.95rem;
+    color: var(--purple);
+    margin: 16px 0 8px;
+}
+.report-content p { margin: 0 0 12px; color: var(--text); }
+.report-content ul { margin: 0 0 14px; padding-left: 22px; }
+.report-content li { margin-bottom: 8px; color: var(--text); }
+.report-content strong { color: var(--cyan); font-weight: 700; }
+
+/* ---- MITRE ATT&CK kill-chain strip (in-app, dark theme) ---- */
+.mitre-chain-wrap { margin-bottom: 25px; }
+.mitre-chain {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 18px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    backdrop-filter: blur(10px);
+}
+.mitre-step {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 8px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    background: rgba(5,8,16,0.4);
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+.mitre-step.active {
+    color: #050810;
+    background: linear-gradient(90deg, var(--cyan), var(--purple));
+    border-color: transparent;
+    box-shadow: 0 0 14px rgba(0,212,255,0.5);
+}
+.mitre-arrow { color: var(--muted); font-size: 0.8rem; opacity: 0.6; }
+
+/* ---- Report action buttons row ---- */
+.report-actions { flex-wrap: wrap; }
+.btn-outline {
+    background: transparent;
+    color: var(--cyan);
+    border: 1px solid var(--cyan);
+}
+.btn-outline:hover { background: rgba(0,212,255,0.1); }
+
+@media (max-width: 700px) {
+    .mitre-step { font-size: 0.68rem; padding: 6px 9px; }
+}
+
+/* ======================================================
+   PDF EXPORT THEME — light, print-friendly, no neon.
+   This container is built off-screen by script.js purely
+   for html2pdf.js to render — it never appears in the UI.
+   ====================================================== */
+.pdf-export {
+    position: fixed;
+    top: -99999px;
+    left: -99999px;
+    width: 780px;
+    background: #ffffff;
+    color: #1a1a1a;
+    font-family: 'Rajdhani', Arial, sans-serif;
+    padding: 10px;
+}
+
+.pdf-header {
+    border-bottom: 3px solid #0a2540;
+    padding-bottom: 16px;
+    margin-bottom: 22px;
+}
+.pdf-title {
+    font-family: 'Orbitron', Arial, sans-serif;
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    color: #0a2540;
+}
+.pdf-subtitle {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin-top: 4px;
+}
+.pdf-meta {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #555;
+    display: flex;
+    gap: 24px;
+}
+.pdf-meta strong { color: #0a2540; }
+
+.pdf-mitre-wrap { margin-bottom: 24px; }
+.pdf-mitre-wrap h2 {
+    font-size: 14px;
+    letter-spacing: 1px;
+    color: #0a2540;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+.pdf-mitre-chain { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.pdf-mitre-step {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 5px 9px;
+    border-radius: 12px;
+    border: 1px solid #ccc;
+    color: #999;
+    white-space: nowrap;
+}
+.pdf-mitre-step.active {
+    color: #ffffff;
+    background: #0a2540;
+    border-color: #0a2540;
+}
+.pdf-mitre-arrow { color: #bbb; font-size: 11px; }
+
+.pdf-body h1 { font-size: 18px; color: #0a2540; margin: 20px 0 10px; }
+.pdf-body h2 {
+    font-size: 14px;
+    color: #0a2540;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 22px 0 10px;
+    padding-bottom: 4px;
+    border-bottom: 1.5px solid #0a2540;
+}
+.pdf-body h2:first-child { margin-top: 0; }
+.pdf-body h3 { font-size: 12px; color: #333; margin: 14px 0 6px; }
+.pdf-body p { font-size: 11.5px; line-height: 1.6; color: #222; margin: 0 0 10px; }
+.pdf-body ul { margin: 0 0 12px; padding-left: 18px; }
+.pdf-body li { font-size: 11.5px; line-height: 1.55; color: #222; margin-bottom: 6px; }
+.pdf-body strong { color: #0a2540; font-weight: 700; }
+
+.pdf-gallery { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
+.pdf-shot { width: 220px; }
+.pdf-shot img { width: 100%; border: 1px solid #ddd; border-radius: 4px; }
+.pdf-shot p { font-size: 10px; color: #555; margin-top: 4px; }
+
+.pdf-footer {
+    margin-top: 30px;
+    padding-top: 12px;
+    border-top: 1px solid #ddd;
+    font-size: 9px;
+    color: #999;
+    text-align: center;
+}
