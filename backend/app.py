@@ -31,7 +31,7 @@ VIRUSTOTAL_API_KEY = os.environ.get("VIRUSTOTAL_API_KEY", "")
 # and gemini-pro are already gone) — check
 # https://ai.google.dev/gemini-api/docs/deprecations before deploying, and update
 # this list if you start seeing 404s again.
-GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"]
+GEMINI_MODELS = ["gemini-3.7-flash", "gemini-flash-latest", "gemini-3.5-flash-lite", "gemini-2.5-flash"]
 
 # The default safety thresholds can block legitimate defensive security writing
 # (reports that name malware, exploits, brute force, etc.). Relax them here.
