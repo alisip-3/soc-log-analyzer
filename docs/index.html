@@ -6,7 +6,7 @@
     <title>SOC Analyzer | AI-Powered IR Reports</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=4">
      <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
@@ -154,6 +154,12 @@ Example:
     <!-- Report Output -->
     <section class="content-section" id="reportSection" style="display: none;">
         <h2 class="section-label">📋 GENERATED REPORT</h2>
+
+        <div class="mitre-chain-wrap" id="mitreChainWrap" style="display:none;">
+            <h3 class="section-label">🎯 MITRE ATT&CK KILL CHAIN</h3>
+            <div class="mitre-chain" id="mitreChain"></div>
+        </div>
+
         <div class="report-content" id="reportContent"></div>
 
         <div id="screenshotGallery" style="display: none;">
@@ -174,4 +180,3 @@ Example:
     <script src="script.js"></script>
 </body>
 </html>
-
