@@ -49,17 +49,14 @@ Want to test the detection engine? I've included a folder of realistic, noisy lo
 
 ## 🧠 Engineering Challenges I Solved
 
-🔍 **Unstructured Log Parsing**
-> Built custom Python parsers to handle wildly different log formats — from structured CSV exports to raw binary PCAP captures — all without relying on heavy third-party libraries.
+🤖 **Taming the AI (The Hard Part)**
+> Getting Gemini to write security reports was genuinely the hardest part of this project. The API kept rejecting cybersecurity content due to safety filters, models got deprecated mid-development, and the SDK broke unexpectedly. I solved it by dropping the SDK entirely and calling Gemini's REST API directly — which finally gave me full control over the request.
 
-🔌 **Resilient API Integration**
-> Connected to external services (Gemini AI, VirusTotal) with proper retry logic, rate-limit awareness, and graceful error handling so the app never crashes on a bad response.
+🏗️ **Flask Over Docker (A Deliberate Choice)**
+> I needed a backend strong enough to handle file parsing, API calls, and concurrent requests — but lightweight enough to run on free-tier hosting. Docker felt like overkill for this scope. Flask gave me the reliability I needed without the deployment complexity, and it runs rock-solid on Render.
 
-🧩 **Framework-Free Frontend**
-> Managed complex UI state, dynamic rendering, and file uploads entirely in vanilla JavaScript — proving you don't need React or Angular to build a polished web app.
-
-🌐 **Production Deployment Under Constraints**
-> Deployed a decoupled architecture (GitHub Pages + Render free tier) and solved real-world headaches like CORS policies, cold starts, and API timeouts on a zero-budget environment.
+🔗 **Frontend ↔ Backend Communication**
+> Connecting a static GitHub Pages frontend to a Flask backend on Render meant dealing with CORS policies, cold starts, and API timeouts on a zero-budget environment. I solved it with proper error handling and timeout management so the app never just hangs.
 
 ---
 
