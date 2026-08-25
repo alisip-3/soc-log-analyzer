@@ -1,4 +1,4 @@
-#  See It In Action
+#  🎯 See It In Action
 
 ## I tested it on a **real AgentTesla malware infection** (PCAP from Malware-Traffic-Analysis.net) to prove it works on actual attacks.
 
@@ -19,3 +19,5 @@
 ### 5️⃣ Evidence Gallery
 ![Gallery](https://github.com/alisip-3/soc-log-analyzer/blob/main/pcap_full_test/images/05-pcap-gallery%2Bdownload.png)
 *Screenshots get attached to the report as evidence.*
+### The pdf report
+[pdf IR report - AgentTesla malware infection ](https://github.com/alisip-3/soc-log-analyzer/blob/main/pcap_full_test/IR_Report_2026-08-25.pdf)
