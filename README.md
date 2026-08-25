@@ -21,15 +21,22 @@ The engine successfully identified the C2 beaconing, suspicious ports, and exter
 👉 **[View the full test results, screenshots, and the AI-generated PDF report here](./pcap_full_test/)**
 
 ---
+## ✨ Core Capabilities
 
-## ✨ Core Features
+🚀 **Dual-Mode Ingestion Engine**
+> Don't just read logs—understand them. Instantly parse raw **PCAP, CSV, JSON, and TXT** files, or import your own manual investigation notes.
 
-* **Two Workflows:** Upload raw logs (PCAP, CSV, JSON, TXT) for instant analysis, or upload your own Notepad investigation files.
-* **Automated Threat Detection:** Flags brute force, LotL techniques (PowerShell/certutil), suspicious ports, and C2 beaconing.
-* **Threat Intel Integration:** Automatically checks extracted file hashes against **VirusTotal** to confirm known malware.
-* **AI Report Generation:** Uses Google Gemini to write a structured IR report, complete with MITRE ATT&CK kill-chain mapping.
-* **Evidence Handling:** Attach screenshots to findings and export everything as a clean PDF or ZIP package.
+🎯 **Advanced Threat Hunting**
+> Automatically flags the tactics real adversaries use: **Brute Force**, **Living-off-the-Land** (PowerShell/certutil), **C2 Beaconing**, and suspicious port activity.
 
+🦠 **Live VirusTotal Intel**
+> Extracts file hashes (MD5/SHA256) on the fly and pings the **VirusTotal API** to instantly confirm if a dropped payload is known malware.
+
+🤖 **AI-Powered IR Reporting**
+> Leveraging **Google Gemini**, the tool drafts a complete, executive-ready Incident Response report, automatically mapping findings to the **MITRE ATT&CK** framework.
+
+📦 **Automated Evidence Packaging**
+> Attach UI screenshots to your findings with one click. Export the final investigation as a crisp **Vector PDF** or a bundled **ZIP archive** ready for management.
 ---
 
 ## 📂 Try It Yourself
@@ -40,13 +47,19 @@ Want to test the detection engine? I've included a folder of realistic, noisy lo
 
 ---
 
-## 🤔 Key Engineering Takeaways
+## 🧠 Engineering Challenges I Solved
 
-Building this project pushed me to solve real-world production challenges:
-* Parsing diverse, unstructured log formats natively in Python.
-* Integrating external REST APIs (Gemini, VirusTotal) with proper error handling and rate-limit management.
-* Managing state and rendering dynamic UI elements in vanilla JavaScript.
-* Deploying a decoupled architecture (GitHub Pages frontend + Render backend) and handling CORS and API timeouts in a free-tier environment.
+🔍 **Unstructured Log Parsing**
+> Built custom Python parsers to handle wildly different log formats — from structured CSV exports to raw binary PCAP captures — all without relying on heavy third-party libraries.
+
+🔌 **Resilient API Integration**
+> Connected to external services (Gemini AI, VirusTotal) with proper retry logic, rate-limit awareness, and graceful error handling so the app never crashes on a bad response.
+
+🧩 **Framework-Free Frontend**
+> Managed complex UI state, dynamic rendering, and file uploads entirely in vanilla JavaScript — proving you don't need React or Angular to build a polished web app.
+
+🌐 **Production Deployment Under Constraints**
+> Deployed a decoupled architecture (GitHub Pages + Render free tier) and solved real-world headaches like CORS policies, cold starts, and API timeouts on a zero-budget environment.
 
 ---
 
