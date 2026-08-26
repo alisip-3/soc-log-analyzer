@@ -1,19 +1,5 @@
 const API_URL = "https://soc-log-analyzer-rhld.onrender.com";
 
-// Render's free tier spins the backend down after ~15 min idle, and waking
-// it back up takes 30-60s. Ping it the moment the page loads so it's
-// usually already awake by the time the user clicks a button; both
-// analyze/generate handlers also await this before their real request in
-// case the user acts fast and it's still warming up.
-let wakePromise = null;
-function wakeBackend() {
-    if (!wakePromise) {
-        wakePromise = fetch(`${API_URL}/`).catch(() => {});
-    }
-    return wakePromise;
-}
-wakeBackend();
-
 // Screenshot stores for each mode
 let shots1 = [];
 let shots2 = [];
@@ -35,31 +21,14 @@ const ATTACK_TACTICS = [
 ];
 
 const MITRE_TECHNIQUE_TACTIC = {
-    "T1595": "Reconnaissance",
-    "T1583": "Resource Development",
-    "T1566": "Initial Access",
-    "T1204": "Execution",
-    "T1204.002": "Execution",
-    "T1059": "Execution",
-    "T1059.001": "Execution",
-    "T1047": "Execution",
-    "T1105": "Command and Control",
-    "T1140": "Defense Evasion",
-    "T1197": "Defense Evasion",
-    "T1218": "Defense Evasion",
-    "T1218.005": "Defense Evasion",
-    "T1218.010": "Defense Evasion",
-    "T1218.011": "Defense Evasion",
-    "T1490": "Impact",
-    "T1136": "Persistence",
-    "T1033": "Discovery",
-    "T1482": "Discovery",
-    "T1571": "Command and Control",
-    "T1071": "Command and Control",
-    "T1071.001": "Command and Control",
-    "T1071.004": "Command and Control",
-    "T1048": "Exfiltration",
-    "T1110": "Credential Access"
+    "T1595": "Reconnaissance", "T1583": "Resource Development", "T1566": "Initial Access",
+    "T1204": "Execution", "T1204.002": "Execution", "T1059": "Execution", "T1059.001": "Execution",
+    "T1047": "Execution", "T1105": "Command and Control", "T1140": "Defense Evasion",
+    "T1197": "Defense Evasion", "T1218": "Defense Evasion", "T1218.005": "Defense Evasion",
+    "T1218.010": "Defense Evasion", "T1218.011": "Defense Evasion", "T1490": "Impact",
+    "T1136": "Persistence", "T1033": "Discovery", "T1482": "Discovery", "T1571": "Command and Control",
+    "T1071": "Command and Control", "T1071.001": "Command and Control", "T1071.004": "Command and Control",
+    "T1048": "Exfiltration", "T1110": "Credential Access"
 };
 
 function extractTacticsFromText(text) {
@@ -95,9 +64,6 @@ function renderMitreChain(reportText) {
 
 // ============================================
 // Markdown / plain-report -> HTML renderer.
-// Tolerant of two header styles: "## Title" (real markdown) AND
-// "1. TITLE" / "TITLE" plain numbered/caps headings (what the AI sometimes
-// writes despite instructions). Also accepts "-" or "•" bullets.
 // ============================================
 function looksLikeHeading(line) {
     if (/^\d+\.\s+.{2,60}$/.test(line) && !/[.:]$/.test(line.trim().slice(-1))) return true;
@@ -106,7 +72,6 @@ function looksLikeHeading(line) {
 
 function renderMarkdown(md) {
     if (!md) return '';
-
     const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const lines = md.split('\n');
     let html = '';
@@ -114,11 +79,7 @@ function renderMarkdown(md) {
 
     for (let rawLine of lines) {
         const line = escape(rawLine).trim();
-
-        if (line === '') {
-            if (inList) { html += '</ul>'; inList = false; }
-            continue;
-        }
+        if (line === '') { if (inList) { html += '</ul>'; inList = false; } continue; }
 
         let m;
         if ((m = line.match(/^#\s+(.*)/))) {
@@ -145,20 +106,13 @@ function renderMarkdown(md) {
     return html;
 }
 
-function inlineFormat(text) {
-    return text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-}
-
-// Strips markdown/plain symbols for the raw .txt export.
+function inlineFormat(text) { return text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'); }
 function stripMarkdownSymbols(md) {
-    return (md || '')
-        .replace(/^#{1,3}\s+/gm, '')
-        .replace(/\*\*(.+?)\*\*/g, '$1')
-        .replace(/^[-•]\s+/gm, '• ');
+    return (md || '').replace(/^#{1,3}\s+/gm, '').replace(/\*\*(.+?)\*\*/g, '$1').replace(/^[-•]\s+/gm, '• ');
 }
 
 // ============================================
-// Mode Selection
+// Mode Selection & Reset
 // ============================================
 function selectMode(mode) {
     document.getElementById('modeSelection').style.display = 'none';
@@ -183,7 +137,6 @@ function resetAll() {
     document.getElementById('analysisResults').style.display = 'none';
     document.getElementById('additionalNotes').value = '';
     document.getElementById('incidentName1').value = '';
-
     document.getElementById('incidentName2').value = '';
     document.getElementById('findingsText').value = '';
     document.getElementById('notesUploadBtn').textContent = '📂 Upload Notes File';
@@ -193,35 +146,27 @@ function resetAll() {
     document.getElementById('shotsPreview1').innerHTML = '';
     document.getElementById('shotsPreview2').innerHTML = '';
 
-    lastReportRaw = '';
-    lastIncidentName = '';
-    lastSeverity = '';
+    lastReportRaw = ''; lastIncidentName = ''; lastSeverity = '';
 
     document.getElementById('reportSection').style.display = 'none';
     document.getElementById('uploadSection').style.display = 'none';
     document.getElementById('writeSection').style.display = 'none';
     document.getElementById('modeSelection').style.display = 'block';
-
     window.scrollTo(0, 0);
 }
 
 // ============================================
-// Screenshot Upload (shared for both modes)
+// Screenshot Upload
 // ============================================
 function setupScreenshotUpload(inputId, btnId, previewId, store) {
     const input = document.getElementById(inputId);
     const btn = document.getElementById(btnId);
     const preview = document.getElementById(previewId);
-
     btn.addEventListener('click', () => input.click());
-
     input.addEventListener('change', (e) => {
         Array.from(e.target.files).forEach(file => {
             const reader = new FileReader();
-            reader.onload = (ev) => {
-                store.push({ dataUrl: ev.target.result, caption: '' });
-                renderShots(preview, store);
-            };
+            reader.onload = (ev) => { store.push({ dataUrl: ev.target.result, caption: '' }); renderShots(preview, store); };
             reader.readAsDataURL(file);
         });
         input.value = '';
@@ -231,34 +176,14 @@ function setupScreenshotUpload(inputId, btnId, previewId, store) {
 function renderShots(previewEl, store) {
     previewEl.innerHTML = '';
     store.forEach((shot, i) => {
-        const div = document.createElement('div');
-        div.className = 'shot-item';
-
-        const img = document.createElement('img');
-        img.src = shot.dataUrl;
-
-        const num = document.createElement('span');
-        num.className = 'shot-num';
-        num.textContent = '#' + (i + 1);
-
-        const cap = document.createElement('input');
-        cap.type = 'text';
-        cap.placeholder = 'Caption (optional)';
-        cap.value = shot.caption;
-        cap.addEventListener('input', (e) => { shot.caption = e.target.value; });
-
-        const rm = document.createElement('button');
-        rm.className = 'shot-remove';
-        rm.textContent = '✕';
-        rm.addEventListener('click', () => {
-            store.splice(i, 1);
-            renderShots(previewEl, store);
-        });
-
-        div.appendChild(img);
-        div.appendChild(num);
-        div.appendChild(rm);
-        div.appendChild(cap);
+        const div = document.createElement('div'); div.className = 'shot-item';
+        const img = document.createElement('img'); img.src = shot.dataUrl;
+        const num = document.createElement('span'); num.className = 'shot-num'; num.textContent = '#' + (i + 1);
+        const cap = document.createElement('input'); cap.type = 'text'; cap.placeholder = 'Caption (optional)';
+        cap.value = shot.caption; cap.addEventListener('input', (e) => { shot.caption = e.target.value; });
+        const rm = document.createElement('button'); rm.className = 'shot-remove'; rm.textContent = '✕';
+        rm.addEventListener('click', () => { store.splice(i, 1); renderShots(previewEl, store); });
+        div.appendChild(img); div.appendChild(num); div.appendChild(rm); div.appendChild(cap);
         previewEl.appendChild(div);
     });
 }
@@ -283,7 +208,6 @@ const analyzeBtn = document.getElementById('analyzeBtn');
 const loading = document.getElementById('loading');
 
 browseBtn.addEventListener('click', () => fileInput.click());
-
 fileInput.addEventListener('change', (e) => {
     if (e.target.files.length > 0) {
         selectedFile = e.target.files[0];
@@ -295,8 +219,7 @@ fileInput.addEventListener('change', (e) => {
 dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = '#00d4ff'; });
 dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = ''; });
 dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.style.borderColor = '';
+    e.preventDefault(); dropZone.style.borderColor = '';
     if (e.dataTransfer.files.length > 0) {
         selectedFile = e.dataTransfer.files[0];
         fileName.textContent = `📄 ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(1)} KB)`;
@@ -306,85 +229,47 @@ dropZone.addEventListener('drop', (e) => {
 
 analyzeBtn.addEventListener('click', async () => {
     if (!selectedFile) return;
+    if (selectedFile.size > 20 * 1024 * 1024) { alert('⚠️ File too large. Under 20 MB please.'); return; }
 
-    if (selectedFile.size > 20 * 1024 * 1024) {
-        alert('⚠️ File too large. Please upload a file under 20 MB (free hosting limit).');
-        return;
-    }
-
-    loading.style.display = 'block';
-    fileInfo.style.display = 'none';
-    loading.querySelector('p').textContent = 'Waking up the server (can take up to a minute if it was idle)...';
-    await wakeBackend();
-    loading.querySelector('p').textContent = 'Analyzing your file...';
-
-    const formData = new FormData();
-    formData.append('file', selectedFile);
+    loading.style.display = 'block'; fileInfo.style.display = 'none';
+    const formData = new FormData(); formData.append('file', selectedFile);
 
     try {
         const response = await fetch(`${API_URL}/analyze`, { method: 'POST', body: formData });
-        if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
-            throw new Error(err.error || `Server error: ${response.status}`);
-        }
+        if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `Server error: ${response.status}`);
         const data = await response.json();
         analysisFindings = data.findings || [];
         displayAnalysisResults(data);
-    } catch (error) {
-        alert(`Error: ${error.message}`);
-    } finally {
-        loading.style.display = 'none';
-    }
+    } catch (error) { alert(`Error: ${error.message}`); } 
+    finally { loading.style.display = 'none'; }
 });
 
 function displayAnalysisResults(data) {
     document.getElementById('analysisResults').style.display = 'block';
-
-    const summaryCards = document.getElementById('summaryCards');
-    summaryCards.innerHTML = '';
+    const summaryCards = document.getElementById('summaryCards'); summaryCards.innerHTML = '';
     addSummaryCard('📄 File', data.filename || 'Unknown');
     addSummaryCard('📊 Events', data.total_lines || (data.summary && data.summary.total_rows) || '0');
     if (data.summary && data.summary.top_ips) addSummaryCard('🌐 Top IP', data.summary.top_ips[0].ip);
 
-    const findingsList = document.getElementById('findingsList');
-    findingsList.innerHTML = '';
+    const findingsList = document.getElementById('findingsList'); findingsList.innerHTML = '';
     (data.findings || []).forEach(f => {
-        const sev = f.severity.toLowerCase();
-        const card = document.createElement('div');
-        card.className = `finding-card ${sev}`;
-        card.innerHTML = `
-            <div class="finding-header">
-                <span class="finding-title">${f.title}</span>
-                <span class="finding-severity">${f.severity}</span>
-            </div>
-            <p class="finding-desc">${f.description}</p>
-            ${f.mitre ? `<p class="finding-mitre">🎯 ${f.mitre}</p>` : ''}
-        `;
+        const card = document.createElement('div'); card.className = `finding-card ${f.severity.toLowerCase()}`;
+        card.innerHTML = `<div class="finding-header"><span class="finding-title">${f.title}</span><span class="finding-severity">${f.severity}</span></div>
+            <p class="finding-desc">${f.description}</p>${f.mitre ? `<p class="finding-mitre">🎯 ${f.mitre}</p>` : ''}`;
         findingsList.appendChild(card);
     });
-
     document.getElementById('analysisResults').scrollIntoView({ behavior: 'smooth' });
 }
 
 function addSummaryCard(label, value) {
-    const card = document.createElement('div');
-    card.className = 'summary-card';
+    const card = document.createElement('div'); card.className = 'summary-card';
     card.innerHTML = `<div class="card-value">${value}</div><div class="card-label">${label}</div>`;
     document.getElementById('summaryCards').appendChild(card);
 }
 
 document.getElementById('generateReportBtn1').addEventListener('click', async () => {
-    const findingsText = analysisFindings.map(f =>
-        `[${f.severity}] ${f.title}: ${f.description} ${f.mitre ? '(MITRE: ' + f.mitre + ')' : ''}`
-    ).join('\n');
-
-    await generateReport(
-        findingsText,
-        document.getElementById('incidentName1').value || 'Security Incident',
-        document.getElementById('severity1').value,
-        document.getElementById('additionalNotes').value,
-        shots1
-    );
+    const findingsText = analysisFindings.map(f => `[${f.severity}] ${f.title}: ${f.description} ${f.mitre ? '(MITRE: ' + f.mitre + ')' : ''}`).join('\n');
+    await generateReport(findingsText, document.getElementById('incidentName1').value || 'Security Incident', document.getElementById('severity1').value, document.getElementById('additionalNotes').value, shots1);
 });
 
 // ============================================
@@ -392,65 +277,39 @@ document.getElementById('generateReportBtn1').addEventListener('click', async ()
 // ============================================
 const notesFileInput = document.getElementById('notesFileInput');
 const notesUploadBtn = document.getElementById('notesUploadBtn');
-
 notesUploadBtn.addEventListener('click', () => notesFileInput.click());
-
 notesFileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-        document.getElementById('findingsText').value = ev.target.result;
-        notesUploadBtn.textContent = `✅ Loaded: ${file.name}`;
-    };
+    reader.onload = (ev) => { document.getElementById('findingsText').value = ev.target.result; notesUploadBtn.textContent = `✅ Loaded: ${file.name}`; };
     reader.readAsText(file);
 });
 
 document.getElementById('generateReportBtn2').addEventListener('click', async () => {
     const findingsText = document.getElementById('findingsText').value;
-    if (!findingsText.trim()) {
-        alert('Please type your findings or upload a notes file first.');
-        return;
-    }
-    await generateReport(
-        findingsText,
-        document.getElementById('incidentName2').value || 'Security Incident',
-        document.getElementById('severity2').value,
-        '',
-        shots2
-    );
+    if (!findingsText.trim()) { alert('Please type your findings or upload a notes file first.'); return; }
+    await generateReport(findingsText, document.getElementById('incidentName2').value || 'Security Incident', document.getElementById('severity2').value, '', shots2);
 });
 
 // ============================================
-// Shared: Generate Report via AI
+// Shared: Generate Report via AI (120s Timeout)
 // ============================================
 async function generateReport(findingsText, incidentName, severity, additionalNotes, shotsStore) {
-    activeShots = shotsStore;
-    lastIncidentName = incidentName;
-    lastSeverity = severity;
+    activeShots = shotsStore; lastIncidentName = incidentName; lastSeverity = severity;
     document.getElementById('reportLoading').style.display = 'block';
     document.getElementById('reportSection').style.display = 'none';
-    document.querySelector('#reportLoading p').textContent = 'Waking up the server (can take up to a minute if it was idle)...';
-    await wakeBackend();
-    document.querySelector('#reportLoading p').textContent = 'AI is writing your professional report... (15-30 seconds)';
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 seconds timeout
 
     try {
         const response = await fetch(`${API_URL}/generate-report`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                findings: findingsText,
-                incident_name: incidentName,
-                severity: severity,
-                additional_notes: additionalNotes,
-                screenshots: shotsToText(shotsStore)
-            })
+            body: JSON.stringify({ findings: findingsText, incident_name: incidentName, severity: severity, additional_notes: additionalNotes, screenshots: shotsToText(shotsStore) }),
+            signal: controller.signal
         });
-
-        if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
-            throw new Error(err.error || `Server error: ${response.status}`);
-        }
+        if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `Server error: ${response.status}`);
         const data = await response.json();
 
         lastReportRaw = data.report;
@@ -459,31 +318,25 @@ async function generateReport(findingsText, incidentName, severity, additionalNo
         renderGallery(activeShots);
         document.getElementById('reportSection').style.display = 'block';
         document.getElementById('reportSection').scrollIntoView({ behavior: 'smooth' });
-
     } catch (error) {
-        alert(`Error generating report: ${error.message}`);
+        if (error.name === 'AbortError') alert('⏱️ AI took too long (over 120s). Try again.');
+        else alert(`Error generating report: ${error.message}`);
     } finally {
+        clearTimeout(timeoutId);
         document.getElementById('reportLoading').style.display = 'none';
     }
 }
 
 function renderGallery(store) {
-    const wrap = document.getElementById('screenshotGallery');
-    const grid = document.getElementById('galleryGrid');
+    const wrap = document.getElementById('screenshotGallery'); const grid = document.getElementById('galleryGrid');
     grid.innerHTML = '';
     if (!store || store.length === 0) { wrap.style.display = 'none'; return; }
-
     wrap.style.display = 'block';
     store.forEach((s, i) => {
-        const fig = document.createElement('figure');
-        fig.className = 'gallery-item';
-        const img = document.createElement('img');
-        img.src = s.dataUrl;
-        const cap = document.createElement('figcaption');
-        cap.textContent = `#${i + 1}${s.caption ? ' - ' + s.caption : ''}`;
-        fig.appendChild(img);
-        fig.appendChild(cap);
-        grid.appendChild(fig);
+        const fig = document.createElement('figure'); fig.className = 'gallery-item';
+        const img = document.createElement('img'); img.src = s.dataUrl;
+        const cap = document.createElement('figcaption'); cap.textContent = `#${i + 1}${s.caption ? ' - ' + s.caption : ''}`;
+        fig.appendChild(img); fig.appendChild(cap); grid.appendChild(fig);
     });
 }
 
@@ -491,95 +344,112 @@ function renderGallery(store) {
 // Copy Report
 // ============================================
 document.getElementById('copyBtn').addEventListener('click', () => {
-    const text = stripMarkdownSymbols(lastReportRaw);
-    navigator.clipboard.writeText(text).then(() => {
+    navigator.clipboard.writeText(stripMarkdownSymbols(lastReportRaw)).then(() => {
         document.getElementById('copyBtn').textContent = '✅ Copied!';
         setTimeout(() => { document.getElementById('copyBtn').textContent = '📋 Copy Report'; }, 2000);
     });
 });
 
 // ============================================
-// Download Report as PDF (primary, professional format)
+// Download Report as PDF (VECTOR TEXT)
 // ============================================
 document.getElementById('downloadPdfBtn').addEventListener('click', async () => {
     const btn = document.getElementById('downloadPdfBtn');
-    btn.textContent = '⏳ Building PDF...';
-    btn.disabled = true;
-
-    const date = new Date().toISOString().slice(0, 10);
-    const mitreHtml = buildMitreChainHtml(lastReportRaw, true);
-
-    const shotsHtml = (activeShots && activeShots.length > 0)
-        ? `<h2>Evidence Screenshots</h2><div class="pdf-gallery">` +
-          activeShots.map((s, i) => `
-            <div class="pdf-shot">
-                <img src="${s.dataUrl}" />
-                <p>#${i + 1}${s.caption ? ' — ' + s.caption : ''}</p>
-            </div>`).join('') +
-          `</div>`
-        : '';
-
-    const container = document.createElement('div');
-    container.className = 'pdf-export';
-    container.innerHTML = `
-        <div class="pdf-header">
-            <div class="pdf-title">INCIDENT RESPONSE REPORT</div>
-            <div class="pdf-subtitle">${lastIncidentName || 'Security Incident'}</div>
-            <div class="pdf-meta">
-                <span>Severity: <strong>${lastSeverity || 'N/A'}</strong></span>
-                <span>Generated: <strong>${date}</strong></span>
-            </div>
-        </div>
-        ${mitreHtml ? `<div class="pdf-mitre-wrap"><h2>MITRE ATT&CK Kill Chain</h2><div class="pdf-mitre-chain">${mitreHtml}</div></div>` : ''}
-        <div class="pdf-body">${renderMarkdown(lastReportRaw)}</div>
-        ${shotsHtml}
-        <div class="pdf-footer">Generated by SOC Analyzer — soc-log-analyzer-rhld.onrender.com</div>
-    `;
-    // Render it fully visible on top of everything during capture. Hiding
-    // tricks (extreme off-screen coordinates, opacity ~0, negative z-index)
-    // all cause html2canvas to silently skip rendering — it treats those as
-    // "not actually visible" and produces a blank capture. A brief visible
-    // flash during the "Building PDF..." state is the reliable approach.
-    container.style.position = 'fixed';
-    container.style.top = '0';
-    container.style.left = '0';
-    container.style.right = '0';
-    container.style.zIndex = '99999';
-    container.style.maxHeight = '100vh';
-    container.style.overflowY = 'auto';
-    container.style.boxShadow = '0 0 40px rgba(0,0,0,0.6)';
-    document.body.appendChild(container);
-    document.body.style.overflow = 'hidden';
-
-    // Make sure every screenshot <img> has actually finished loading —
-    // html2canvas captures whatever is painted at that instant, so an
-    // unloaded image would just render as blank space.
-    const imgs = container.querySelectorAll('img');
-    await Promise.all(Array.from(imgs).map(img =>
-        img.complete ? Promise.resolve() : new Promise(res => { img.onload = img.onerror = res; })
-    ));
+    btn.textContent = '⏳ Building PDF...'; btn.disabled = true;
 
     try {
-        await html2pdf().set({
-            margin: [15, 15, 15, 15],
-            filename: `IR_Report_${date}.pdf`,
-            image: { type: 'jpeg', quality: 0.95 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-        }).from(container).save();
+        if (!window.jspdf) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+        const pageWidth = 210, pageHeight = 297, margin = 20, contentWidth = pageWidth - (margin * 2);
+        let yPos = margin;
+        const date = new Date().toISOString().slice(0, 10);
+
+        function cleanText(text) {
+            return text.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/^#{1,3}\s+/gm, '').replace(/^[-•]\s+/gm, '');
+        }
+        function checkPageBreak(neededHeight) {
+            if (yPos + neededHeight > pageHeight - margin) { doc.addPage(); yPos = margin; }
+        }
+        function addText(text, fontSize, isBold = false, color = [0, 0, 0]) {
+            const clean = cleanText(text);
+            doc.setFontSize(fontSize); doc.setFont('helvetica', isBold ? 'bold' : 'normal'); doc.setTextColor(color[0], color[1], color[2]);
+            const lines = doc.splitTextToSize(clean, contentWidth);
+            lines.forEach(line => { checkPageBreak(fontSize * 0.4); doc.text(line, margin, yPos); yPos += fontSize * 0.4; });
+            yPos += 2;
+        }
+
+        // Header
+        doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 92, 173); doc.text('INCIDENT RESPONSE REPORT', margin, yPos); yPos += 8;
+        doc.setFontSize(14); doc.text(lastIncidentName || 'Security Incident', margin, yPos); yPos += 10;
+        doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
+        doc.text(`Severity: ${lastSeverity || 'N/A'}`, margin, yPos); yPos += 5;
+        doc.text(`Generated: ${date}`, margin, yPos); yPos += 5;
+        doc.text(`Analyst: Alisi Pinhasov`, margin, yPos); yPos += 10;
+
+        // MITRE ATT&CK
+        const tactics = extractTacticsFromText(lastReportRaw);
+        if (tactics.size > 0) {
+            checkPageBreak(30); doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 92, 173);
+            doc.text('MITRE ATT&CK Techniques Detected', margin, yPos); yPos += 6;
+            doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0);
+            Array.from(tactics).forEach((tactic, idx) => {
+                checkPageBreak(6); doc.text(`${idx + 1}. ${tactic}`, margin + 5, yPos); yPos += 6;
+            });
+            yPos += 8;
+        }
+
+        // Content
+        const lines = lastReportRaw.split('\n');
+        for (let rawLine of lines) {
+            const line = rawLine.trim();
+            if (line === '') { yPos += 3; continue; }
+            if (line.match(/^#\s+/)) { checkPageBreak(12); yPos += 5; addText(line.replace(/^#\s+/, ''), 16, true, [0, 92, 173]); }
+            else if (line.match(/^##\s+/)) { checkPageBreak(10); yPos += 3; addText(line.replace(/^##\s+/, ''), 14, true, [0, 92, 173]); }
+            else if (line.match(/^###\s+/)) { checkPageBreak(8); addText(line.replace(/^###\s+/, ''), 12, true, [0, 92, 173]); }
+            else if (line.match(/^[-•]\s+/)) {
+                const bulletText = line.replace(/^[-•]\s+/, ''); doc.setFontSize(10); doc.setTextColor(0, 0, 0);
+                const cleanBullet = cleanText(bulletText);
+                const bulletLines = doc.splitTextToSize('• ' + cleanBullet, contentWidth - 5);
+                bulletLines.forEach((bl, idx) => { checkPageBreak(5); doc.text(bl, margin + (idx === 0 ? 0 : 5), yPos); yPos += 5; });
+                yPos += 2;
+            }
+            else if (line.match(/^\d+\.\s+/)) { checkPageBreak(10); yPos += 3; addText(line, 12, true, [0, 92, 173]); }
+            else { addText(line, 10, false, [0, 0, 0]); }
+        }
+
+        // Screenshots
+        if (activeShots && activeShots.length > 0) {
+            checkPageBreak(30); yPos += 5; doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 92, 173);
+            doc.text('Evidence Screenshots', margin, yPos); yPos += 8;
+            for (let i = 0; i < activeShots.length; i++) {
+                const shot = activeShots[i];
+                checkPageBreak(10); doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 0);
+                doc.text(`Screenshot #${i + 1}${shot.caption ? ': ' + shot.caption : ''}`, margin, yPos); yPos += 6;
+                try {
+                    const imgProps = doc.getImageProperties(shot.dataUrl);
+                    const ratio = Math.min(contentWidth / imgProps.width, 120 / imgProps.height);
+                    const imgWidth = imgProps.width * ratio, imgHeight = imgProps.height * ratio;
+                    checkPageBreak(imgHeight + 10);
+                    doc.addImage(shot.dataUrl, imgProps.fileType || 'PNG', margin, yPos, imgWidth, imgHeight);
+                    yPos += imgHeight + 8;
+                } catch (e) { console.error('Error adding screenshot:', e); }
+            }
+        }
+
+        doc.setFontSize(8); doc.setTextColor(150, 150, 150);
+        doc.text('Generated by SOC Analyzer — soc-log-analyzer-rhld.onrender.com', margin, pageHeight - 10);
+        doc.save(`IR_Report_${date}.pdf`);
     } catch (e) {
-        alert('Error building PDF: ' + e.message);
+        alert('Error building PDF: ' + e.message); console.error(e);
     } finally {
-        document.body.removeChild(container);
-        document.body.style.overflow = '';
-        btn.textContent = '📥 Download PDF';
-        btn.disabled = false;
+        btn.textContent = '📥 Download PDF'; btn.disabled = false;
     }
 });
 
 // ============================================
-// Download Report as plain .txt (backup / raw text option)
+// Download Report as plain .txt
 // ============================================
 document.getElementById('downloadTxtBtn').addEventListener('click', async () => {
     const text = stripMarkdownSymbols(lastReportRaw);
@@ -588,40 +458,32 @@ document.getElementById('downloadTxtBtn').addEventListener('click', async () => 
     if (activeShots && activeShots.length > 0) {
         const zip = new JSZip();
         zip.file("IR_Report.txt", text);
-
         activeShots.forEach((shot, i) => {
             const matches = shot.dataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
-            if (matches) {
-                const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
-                zip.file(`screenshot_${i + 1}.${ext}`, matches[2], { base64: true });
-            }
+            if (matches) zip.file(`screenshot_${i + 1}.${matches[1] === 'jpeg' ? 'jpg' : matches[1]}`, matches[2], { base64: true });
         });
-
         let readme = "Evidence Screenshots\n\n";
-        activeShots.forEach((s, i) => {
-            readme += `- Screenshot #${i + 1}: ${s.caption || '(no caption)'}\n`;
-        });
+        activeShots.forEach((s, i) => { readme += `- Screenshot #${i + 1}: ${s.caption || '(no caption)'}\n`; });
         zip.file("screenshots_readme.txt", readme);
-
-        const blob = await zip.generateAsync({ type: "blob" });
-        triggerDownload(blob, `IR_Report_${date}.zip`);
+        triggerDownload(await zip.generateAsync({ type: "blob" }), `IR_Report_${date}.zip`);
     } else {
-        const blob = new Blob([text], { type: 'text/plain' });
-        triggerDownload(blob, `IR_Report_${date}.txt`);
+        triggerDownload(new Blob([text], { type: 'text/plain' }), `IR_Report_${date}.txt`);
     }
 
     const btn = document.getElementById('downloadTxtBtn');
-    btn.textContent = '✅ Saved!';
-    setTimeout(() => { btn.textContent = '📄 Download .txt'; }, 2000);
+    btn.textContent = '✅ Saved!'; setTimeout(() => { btn.textContent = '📄 Download .txt'; }, 2000);
 });
 
 function triggerDownload(blob, filename) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const url = URL.createObjectURL(blob); const a = document.createElement('a');
+    a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src; script.onload = resolve; script.onerror = reject;
+        document.head.appendChild(script);
+    });
 }
