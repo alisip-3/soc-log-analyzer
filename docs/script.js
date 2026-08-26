@@ -349,141 +349,222 @@ document.getElementById('copyBtn').addEventListener('click', () => {
         setTimeout(() => { document.getElementById('copyBtn').textContent = '📋 Copy Report'; }, 2000);
     });
 });
-
 // ============================================
-// Download Report as PDF (VECTOR TEXT)
+// Download Report as PDF (VECTOR TEXT - crisp, selectable)
 // ============================================
 document.getElementById('downloadPdfBtn').addEventListener('click', async () => {
     const btn = document.getElementById('downloadPdfBtn');
-    btn.textContent = '⏳ Building PDF...'; btn.disabled = true;
+    btn.textContent = '⏳ Building PDF...';
+    btn.disabled = true;
 
     try {
-        if (!window.jspdf) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+        if (!window.jspdf) {
+            await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+        }
 
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-        const pageWidth = 210, pageHeight = 297, margin = 20, contentWidth = pageWidth - (margin * 2);
+
+        const pageWidth = 210;
+        const pageHeight = 297;
+        const margin = 20;
+        const contentWidth = pageWidth - (margin * 2);
         let yPos = margin;
+
         const date = new Date().toISOString().slice(0, 10);
 
+        // Strip markdown formatting
         function cleanText(text) {
-            return text.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/^#{1,3}\s+/gm, '').replace(/^[-•]\s+/gm, '');
+            return text
+                .replace(/\*\*(.+?)\*\*/g, '$1')  // Remove **bold**
+                .replace(/\*(.+?)\*/g, '$1')       // Remove *italic*
+                .replace(/^#{1,3}\s+/gm, '')       // Remove heading markers
+                .replace(/^[-•]\s+/gm, '');        // Remove bullet markers
         }
+
         function checkPageBreak(neededHeight) {
-            if (yPos + neededHeight > pageHeight - margin) { doc.addPage(); yPos = margin; }
+            if (yPos + neededHeight > pageHeight - margin) {
+                doc.addPage();
+                yPos = margin;
+            }
         }
+
         function addText(text, fontSize, isBold = false, color = [0, 0, 0]) {
             const clean = cleanText(text);
-            doc.setFontSize(fontSize); doc.setFont('helvetica', isBold ? 'bold' : 'normal'); doc.setTextColor(color[0], color[1], color[2]);
+            doc.setFontSize(fontSize);
+            doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+            doc.setTextColor(color[0], color[1], color[2]);
+
             const lines = doc.splitTextToSize(clean, contentWidth);
-            lines.forEach(line => { checkPageBreak(fontSize * 0.4); doc.text(line, margin, yPos); yPos += fontSize * 0.4; });
+            lines.forEach(line => {
+                checkPageBreak(fontSize * 0.4);
+                doc.text(line, margin, yPos);
+                yPos += fontSize * 0.4;
+            });
             yPos += 2;
         }
 
         // Header
-        doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 92, 173); doc.text('INCIDENT RESPONSE REPORT', margin, yPos); yPos += 8;
-        doc.setFontSize(14); doc.text(lastIncidentName || 'Security Incident', margin, yPos); yPos += 10;
-        doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
-        doc.text(`Severity: ${lastSeverity || 'N/A'}`, margin, yPos); yPos += 5;
-        doc.text(`Generated: ${date}`, margin, yPos); yPos += 5;
-        doc.text(`Analyst: Alisi Pinhasov`, margin, yPos); yPos += 10;
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0, 92, 173);
+        doc.text('INCIDENT RESPONSE REPORT', margin, yPos);
+        yPos += 8;
 
-        // MITRE ATT&CK
+        doc.setFontSize(14);
+        doc.text(lastIncidentName || 'Security Incident', margin, yPos);
+        yPos += 10;
+
+        // Metadata
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Severity: ${lastSeverity || 'N/A'}`, margin, yPos);
+        yPos += 5;
+        doc.text(`Generated: ${date}`, margin, yPos);
+        yPos += 5;
+        doc.text(`Analyst: Alisi Pinhasov`, margin, yPos);
+        yPos += 10;
+
+        // MITRE ATT&CK Kill Chain
         const tactics = extractTacticsFromText(lastReportRaw);
         if (tactics.size > 0) {
-            checkPageBreak(30); doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 92, 173);
-            doc.text('MITRE ATT&CK Techniques Detected', margin, yPos); yPos += 6;
-            doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0);
-            Array.from(tactics).forEach((tactic, idx) => {
-                checkPageBreak(6); doc.text(`${idx + 1}. ${tactic}`, margin + 5, yPos); yPos += 6;
+            checkPageBreak(30);
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(0, 92, 173);
+            doc.text('MITRE ATT&CK Techniques Detected', margin, yPos);
+            yPos += 6;
+
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(0, 0, 0);
+            
+            const tacticArray = Array.from(tactics);
+            tacticArray.forEach((tactic, idx) => {
+                checkPageBreak(6);
+                doc.text(`${idx + 1}. ${tactic}`, margin + 5, yPos);
+                yPos += 6;
             });
             yPos += 8;
         }
 
-        // Content
+        // Parse and render the report content
         const lines = lastReportRaw.split('\n');
+        
         for (let rawLine of lines) {
             const line = rawLine.trim();
-            if (line === '') { yPos += 3; continue; }
-            if (line.match(/^#\s+/)) { checkPageBreak(12); yPos += 5; addText(line.replace(/^#\s+/, ''), 16, true, [0, 92, 173]); }
-            else if (line.match(/^##\s+/)) { checkPageBreak(10); yPos += 3; addText(line.replace(/^##\s+/, ''), 14, true, [0, 92, 173]); }
-            else if (line.match(/^###\s+/)) { checkPageBreak(8); addText(line.replace(/^###\s+/, ''), 12, true, [0, 92, 173]); }
+            
+            if (line === '') {
+                yPos += 3;
+                continue;
+            }
+
+            // Headings
+            if (line.match(/^#\s+/)) {
+                checkPageBreak(12);
+                yPos += 5;
+                addText(line.replace(/^#\s+/, ''), 16, true, [0, 92, 173]);
+            } else if (line.match(/^##\s+/)) {
+                checkPageBreak(10);
+                yPos += 3;
+                addText(line.replace(/^##\s+/, ''), 14, true, [0, 92, 173]);
+            } else if (line.match(/^###\s+/)) {
+                checkPageBreak(8);
+                addText(line.replace(/^###\s+/, ''), 12, true, [0, 92, 173]);
+            } 
+            // Bullet points
             else if (line.match(/^[-•]\s+/)) {
-                const bulletText = line.replace(/^[-•]\s+/, ''); doc.setFontSize(10); doc.setTextColor(0, 0, 0);
+                const bulletText = line.replace(/^[-•]\s+/, '');
+                doc.setFontSize(10);
+                doc.setTextColor(0, 0, 0);
+                
                 const cleanBullet = cleanText(bulletText);
                 const bulletLines = doc.splitTextToSize('• ' + cleanBullet, contentWidth - 5);
-                bulletLines.forEach((bl, idx) => { checkPageBreak(5); doc.text(bl, margin + (idx === 0 ? 0 : 5), yPos); yPos += 5; });
+                bulletLines.forEach((bl, idx) => {
+                    checkPageBreak(5);
+                    doc.text(bl, margin + (idx === 0 ? 0 : 5), yPos);
+                    yPos += 5;
+                });
                 yPos += 2;
             }
-            else if (line.match(/^\d+\.\s+/)) { checkPageBreak(10); yPos += 3; addText(line, 12, true, [0, 92, 173]); }
-            else { addText(line, 10, false, [0, 0, 0]); }
+            // Numbered lists (like "1. HEADER & METADATA")
+            else if (line.match(/^\d+\.\s+/)) {
+                checkPageBreak(10);
+                yPos += 3;
+                addText(line, 12, true, [0, 92, 173]);
+            }
+            // Regular paragraphs
+            else {
+                addText(line, 10, false, [0, 0, 0]);
+            }
         }
 
         // Screenshots
         if (activeShots && activeShots.length > 0) {
-            checkPageBreak(30); yPos += 5; doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 92, 173);
-            doc.text('Evidence Screenshots', margin, yPos); yPos += 8;
+            checkPageBreak(30);
+            yPos += 5;
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(0, 92, 173);
+            doc.text('Evidence Screenshots', margin, yPos);
+            yPos += 8;
+
             for (let i = 0; i < activeShots.length; i++) {
                 const shot = activeShots[i];
-                checkPageBreak(10); doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 0);
-                doc.text(`Screenshot #${i + 1}${shot.caption ? ': ' + shot.caption : ''}`, margin, yPos); yPos += 6;
+                
+                checkPageBreak(10);
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(0, 0, 0);
+                const caption = `Screenshot #${i + 1}${shot.caption ? ': ' + shot.caption : ''}`;
+                doc.text(caption, margin, yPos);
+                yPos += 6;
+
                 try {
-                    const imgProps = doc.getImageProperties(shot.dataUrl);
-                    const ratio = Math.min(contentWidth / imgProps.width, 120 / imgProps.height);
-                    const imgWidth = imgProps.width * ratio, imgHeight = imgProps.height * ratio;
+                    const imgData = shot.dataUrl;
+                    const imgProps = doc.getImageProperties(imgData);
+                    const maxWidth = contentWidth;
+                    const maxHeight = 120;
+                    
+                    let imgWidth = imgProps.width;
+                    let imgHeight = imgProps.height;
+                    
+                    const ratio = Math.min(maxWidth / imgWidth, maxHeight / imgHeight);
+                    imgWidth *= ratio;
+                    imgHeight *= ratio;
+
                     checkPageBreak(imgHeight + 10);
-                    doc.addImage(shot.dataUrl, imgProps.fileType || 'PNG', margin, yPos, imgWidth, imgHeight);
+                    doc.addImage(imgData, imgProps.fileType || 'PNG', margin, yPos, imgWidth, imgHeight);
                     yPos += imgHeight + 8;
-                } catch (e) { console.error('Error adding screenshot:', e); }
+                } catch (e) {
+                    console.error('Error adding screenshot:', e);
+                }
             }
         }
 
-        doc.setFontSize(8); doc.setTextColor(150, 150, 150);
+        // Footer
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
         doc.text('Generated by SOC Analyzer — soc-log-analyzer-rhld.onrender.com', margin, pageHeight - 10);
+
         doc.save(`IR_Report_${date}.pdf`);
+
     } catch (e) {
-        alert('Error building PDF: ' + e.message); console.error(e);
+        alert('Error building PDF: ' + e.message);
+        console.error(e);
     } finally {
-        btn.textContent = '📥 Download PDF'; btn.disabled = false;
+        btn.textContent = '📥 Download PDF';
+        btn.disabled = false;
     }
 });
-
-// ============================================
-// Download Report as plain .txt
-// ============================================
-document.getElementById('downloadTxtBtn').addEventListener('click', async () => {
-    const text = stripMarkdownSymbols(lastReportRaw);
-    const date = new Date().toISOString().slice(0, 10);
-
-    if (activeShots && activeShots.length > 0) {
-        const zip = new JSZip();
-        zip.file("IR_Report.txt", text);
-        activeShots.forEach((shot, i) => {
-            const matches = shot.dataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
-            if (matches) zip.file(`screenshot_${i + 1}.${matches[1] === 'jpeg' ? 'jpg' : matches[1]}`, matches[2], { base64: true });
-        });
-        let readme = "Evidence Screenshots\n\n";
-        activeShots.forEach((s, i) => { readme += `- Screenshot #${i + 1}: ${s.caption || '(no caption)'}\n`; });
-        zip.file("screenshots_readme.txt", readme);
-        triggerDownload(await zip.generateAsync({ type: "blob" }), `IR_Report_${date}.zip`);
-    } else {
-        triggerDownload(new Blob([text], { type: 'text/plain' }), `IR_Report_${date}.txt`);
-    }
-
-    const btn = document.getElementById('downloadTxtBtn');
-    btn.textContent = '✅ Saved!'; setTimeout(() => { btn.textContent = '📄 Download .txt'; }, 2000);
-});
-
-function triggerDownload(blob, filename) {
-    const url = URL.createObjectURL(blob); const a = document.createElement('a');
-    a.href = url; a.download = filename; document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
-}
 
 function loadScript(src) {
     return new Promise((resolve, reject) => {
         const script = document.createElement('script');
-        script.src = src; script.onload = resolve; script.onerror = reject;
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
         document.head.appendChild(script);
     });
 }
