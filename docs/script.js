@@ -440,12 +440,15 @@ async function generateReport(findingsText, incidentName, severity, additionalNo
         document.getElementById('reportSection').style.display = 'block';
         document.getElementById('reportSection').scrollIntoView({ behavior: 'smooth' });
 
-    } catch (error) {
-        alert(`Error generating report: ${error.message}`);
+       } catch (error) {
+        if (error.name === 'AbortError') {
+            alert('⏱️ The AI took too long to respond. The server might be waking up — please try again in 10 seconds.');
+        } else {
+            alert(`Error generating report: ${error.message}\n\nIf this is your first request, the server might be waking up. Please wait 10 seconds and try again.`);
+        }
     } finally {
         document.getElementById('reportLoading').style.display = 'none';
     }
-}
 
 function renderGallery(store) {
     const wrap = document.getElementById('screenshotGallery');
