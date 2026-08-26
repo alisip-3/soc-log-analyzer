@@ -414,6 +414,10 @@ async function generateReport(findingsText, incidentName, severity, additionalNo
     document.getElementById('reportLoading').style.display = 'block';
     document.getElementById('reportSection').style.display = 'none';
 
+    // 120 second timeout to prevent hanging on free hosting
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
+
     try {
         const response = await fetch(`${API_URL}/generate-report`, {
             method: 'POST',
@@ -424,7 +428,8 @@ async function generateReport(findingsText, incidentName, severity, additionalNo
                 severity: severity,
                 additional_notes: additionalNotes,
                 screenshots: shotsToText(shotsStore)
-            })
+            }),
+            signal: controller.signal
         });
 
         if (!response.ok) {
@@ -440,34 +445,16 @@ async function generateReport(findingsText, incidentName, severity, additionalNo
         document.getElementById('reportSection').style.display = 'block';
         document.getElementById('reportSection').scrollIntoView({ behavior: 'smooth' });
 
-       } catch (error) {
+    } catch (error) {
         if (error.name === 'AbortError') {
             alert('⏱️ The AI took too long to respond. The server might be waking up — please try again in 10 seconds.');
         } else {
             alert(`Error generating report: ${error.message}\n\nIf this is your first request, the server might be waking up. Please wait 10 seconds and try again.`);
         }
     } finally {
+        clearTimeout(timeoutId);
         document.getElementById('reportLoading').style.display = 'none';
     }
-
-function renderGallery(store) {
-    const wrap = document.getElementById('screenshotGallery');
-    const grid = document.getElementById('galleryGrid');
-    grid.innerHTML = '';
-    if (!store || store.length === 0) { wrap.style.display = 'none'; return; }
-
-    wrap.style.display = 'block';
-    store.forEach((s, i) => {
-        const fig = document.createElement('figure');
-        fig.className = 'gallery-item';
-        const img = document.createElement('img');
-        img.src = s.dataUrl;
-        const cap = document.createElement('figcaption');
-        cap.textContent = `#${i + 1}${s.caption ? ' - ' + s.caption : ''}`;
-        fig.appendChild(img);
-        fig.appendChild(cap);
-        grid.appendChild(fig);
-    });
 }
 
 // ============================================
