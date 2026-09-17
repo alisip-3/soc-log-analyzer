@@ -175,7 +175,7 @@ function resetAll() {
     document.getElementById('notesUploadBtn').textContent = '📂 Upload Notes File';
     document.getElementById('notesFileInput').value = '';
 
-    shots1 = []; shots2 = []; activeShots = [];
+    shots1.length = 0; shots2.length = 0; activeShots.length = 0;
     document.getElementById('shotsPreview1').innerHTML = '';
     document.getElementById('shotsPreview2').innerHTML = '';
 
