@@ -214,6 +214,35 @@ function setupScreenshotUpload(inputId, btnId, previewId, store) {
     });
 }
 
+function renderGallery(shots) {
+    const wrap = document.getElementById('screenshotGallery');
+    const grid = document.getElementById('galleryGrid');
+    grid.innerHTML = '';
+
+    if (!shots || shots.length === 0) {
+        wrap.style.display = 'none';
+        return;
+    }
+
+    shots.forEach((shot, i) => {
+        const fig = document.createElement('figure');
+        fig.className = 'gallery-item';
+
+        const img = document.createElement('img');
+        img.src = shot.dataUrl;
+        img.alt = `Screenshot ${i + 1}`;
+
+        const cap = document.createElement('figcaption');
+        cap.textContent = `#${i + 1}${shot.caption ? ': ' + shot.caption : ''}`;
+
+        fig.appendChild(img);
+        fig.appendChild(cap);
+        grid.appendChild(fig);
+    });
+
+    wrap.style.display = 'block';
+}
+
 function renderShots(previewEl, store) {
     previewEl.innerHTML = '';
     store.forEach((shot, i) => {
